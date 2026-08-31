@@ -38,6 +38,7 @@ import com.acesoftph.offlinepasswordwallet.password.PasswordStrength
 import com.acesoftph.offlinepasswordwallet.ui.components.PasswordField
 import com.acesoftph.offlinepasswordwallet.ui.components.StrengthMeter
 import com.acesoftph.offlinepasswordwallet.ui.components.WalletCard
+import com.acesoftph.offlinepasswordwallet.tier.FreeTier
 import kotlinx.coroutines.launch
 
 /* --------------------------------------------------------------------------- */
@@ -62,7 +63,7 @@ fun ChangeMasterPasswordScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Change master password") },
+                title = { Text(FreeTier.title("Change master password")) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -140,7 +141,7 @@ fun ChangeSecurityAnswersScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Change security answers") },
+                title = { Text(FreeTier.title("Change security answers")) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

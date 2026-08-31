@@ -8,6 +8,8 @@ import com.acesoftph.offlinepasswordwallet.data.model.VaultDocument
 import com.acesoftph.offlinepasswordwallet.data.model.VaultEntry
 import com.acesoftph.offlinepasswordwallet.data.storage.VaultCodec
 import com.acesoftph.offlinepasswordwallet.data.storage.VaultFileStore
+import com.acesoftph.offlinepasswordwallet.tier.FreeTier
+import com.acesoftph.offlinepasswordwallet.tier.FreeTierLimitException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -105,7 +107,11 @@ class VaultRepository(
         document: VaultDocument,
     ): Result<Unit> = guarded {
         run {
-            val file = codec.createVault(masterPassword, rawAnswers, document)
+            // A backup can hold more than the free tier allows (it may have been
+            // written by a paid install, or before the cap existed). Keep the first
+            // MAX_ENTRIES and drop the rest; the caller reports how many were lost.
+            val capped = document.copy(entries = FreeTier.cap(document.entries))
+            val file = codec.createVault(masterPassword, rawAnswers, capped)
             store.write(file)
             adopt(file, codec.unlockWithMaster(file, masterPassword))
         }
@@ -204,8 +210,11 @@ class VaultRepository(
         val stamped = entry.copy(updatedAtEpochMillis = System.currentTimeMillis())
         val idx = doc.entries.indexOfFirst { it.id == entry.id }
         val entries = if (idx >= 0) {
+            // Editing an existing entry never changes the count, so a full vault
+            // must still be editable.
             doc.entries.toMutableList().apply { this[idx] = stamped }
         } else {
+            if (FreeTier.isFull(doc.entries.size)) throw FreeTierLimitException()
             doc.entries + stamped
         }
         doc.copy(entries = entries)
@@ -217,6 +226,7 @@ class VaultRepository(
 
     suspend fun duplicateEntry(id: String): Result<Unit> = mutate { doc ->
         val original = doc.entries.firstOrNull { it.id == id } ?: return@mutate doc
+        if (FreeTier.isFull(doc.entries.size)) throw FreeTierLimitException()
         val now = System.currentTimeMillis()
         val title = original.value("Title")
         val copy = original.copy(
@@ -241,8 +251,16 @@ class VaultRepository(
                 // once and upsertEntry only ever updates the first match, so the
                 // twin can never be edited or individually deleted. Give any
                 // colliding entry a fresh id instead.
-                ImportMode.ADD -> doc.copy(entries = doc.entries + withUniqueIds(imported, doc.entries))
-                ImportMode.REPLACE -> doc.copy(entries = withUniqueIds(imported, emptyList()))
+                // Both modes keep only what fits under the free cap and discard the
+                // rest, rather than failing the whole import: a restore that refused
+                // outright would leave someone with a 25-entry backup no way to get
+                // any of it back.
+                ImportMode.ADD -> {
+                    val room = FreeTier.remaining(doc.entries.size)
+                    doc.copy(entries = doc.entries + withUniqueIds(imported.take(room), doc.entries))
+                }
+                ImportMode.REPLACE ->
+                    doc.copy(entries = withUniqueIds(FreeTier.cap(imported), emptyList()))
             }
         }
 

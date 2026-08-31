@@ -38,6 +38,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
+import com.acesoftph.offlinepasswordwallet.tier.FreeTier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -86,10 +90,12 @@ fun VaultListScreen(
         }
     }
 
+    val vaultFull = FreeTier.isFull(entries.size)
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Password List") },
+                title = { Text(FreeTier.title("Password List")) },
                 actions = {
                     IconButton(
                         onClick = { scope.launch { ServiceLocator.vaultRepository.lock() } },
@@ -100,11 +106,47 @@ fun VaultListScreen(
             )
         },
         floatingActionButton = {
+            // At the free cap the button stops adding, takes on the disabled
+            // palette, and reports itself disabled to accessibility. Tapping it
+            // still explains why rather than doing nothing: a control that is
+            // visibly dead and silent reads as a bug.
             ExtendedFloatingActionButton(
-                onClick = onAddEntry,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.testTag("add_entry_fab"),
+                onClick = {
+                    if (vaultFull) {
+                        scope.launch { snackbar.showSnackbar(FreeTier.LIMIT_REACHED) }
+                    } else {
+                        onAddEntry()
+                    }
+                },
+                containerColor = if (vaultFull) {
+                    MaterialTheme.colorScheme.surfaceContainerHighest
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
+                contentColor = if (vaultFull) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onPrimary
+                },
+                // ExtendedFloatingActionButton has no `enabled` parameter, and its
+                // internal clickable publishes an enabled node that a plain
+                // `semantics { disabled() }` does not displace -- verified on
+                // device, where the button still reported enabled=true while
+                // refusing every tap. clearAndSetSemantics replaces that subtree
+                // outright, so the control finally announces itself as disabled
+                // instead of lying to accessibility services.
+                modifier = Modifier
+                    .then(
+                        if (vaultFull) {
+                            Modifier.clearAndSetSemantics {
+                                contentDescription = "Add entry"
+                                disabled()
+                            }
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .testTag("add_entry_fab"),
             ) {
                 Icon(Icons.Filled.Add, contentDescription = null)
                 Text("  Add entry", fontWeight = FontWeight.SemiBold)
@@ -131,13 +173,20 @@ fun VaultListScreen(
 
             if (entries.isNotEmpty()) {
                 Text(
+                    // Showing the cap alongside the count makes the limit
+                    // discoverable before the button goes dead, not after.
                     text = if (query.isBlank()) {
-                        "${entries.size} ${if (entries.size == 1) "entry" else "entries"}"
+                        "${entries.size} of ${FreeTier.MAX_ENTRIES} entries" +
+                            if (vaultFull) " · free limit reached" else ""
                     } else {
                         "${filtered.size} of ${entries.size} shown"
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (vaultFull && query.isBlank()) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )

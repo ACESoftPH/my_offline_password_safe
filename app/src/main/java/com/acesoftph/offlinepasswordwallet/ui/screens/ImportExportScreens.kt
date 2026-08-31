@@ -45,6 +45,7 @@ import com.acesoftph.offlinepasswordwallet.di.ServiceLocator
 import com.acesoftph.offlinepasswordwallet.importexport.CsvExporter
 import com.acesoftph.offlinepasswordwallet.importexport.CsvImportPreview
 import com.acesoftph.offlinepasswordwallet.importexport.CsvImporter
+import com.acesoftph.offlinepasswordwallet.tier.FreeTier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -65,6 +66,16 @@ fun ImportCsvScreen(onBack: () -> Unit) {
     var confirmReplace by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var doneCount by remember { mutableStateOf<Int?>(null) }
+    var discarded by remember { mutableStateOf(0) }
+
+    val state by ServiceLocator.vaultRepository.state.collectAsStateWithLifecycle()
+    val currentCount = (state as? VaultState.Unlocked)?.entries?.size ?: 0
+
+    /** How many of a [total]-row import will actually land, under the free cap. */
+    fun willImport(total: Int): Int = when (mode) {
+        ImportMode.ADD -> minOf(total, FreeTier.remaining(currentCount))
+        ImportMode.REPLACE -> minOf(total, FreeTier.MAX_ENTRIES)
+    }
 
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
@@ -94,11 +105,15 @@ fun ImportCsvScreen(onBack: () -> Unit) {
         val p = preview ?: return
         busy = true
         scope.launch {
+            val landed = willImport(p.entryCount)
             val result = ServiceLocator.vaultRepository.importEntries(p.entries, mode)
             busy = false
             result.fold(
                 onSuccess = {
-                    doneCount = p.entryCount
+                    // Report what actually landed, not what the file held: the
+                    // repository silently caps the import at the free limit.
+                    doneCount = landed
+                    discarded = p.entryCount - landed
                     preview = null
                     message = null
                 },
@@ -110,7 +125,7 @@ fun ImportCsvScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Import CSV") },
+                title = { Text(FreeTier.title("Import CSV")) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -142,6 +157,15 @@ fun ImportCsvScreen(onBack: () -> Unit) {
 
             doneCount?.let {
                 Text("Imported $it entries.", color = MaterialTheme.colorScheme.primary)
+                if (discarded > 0) {
+                    Text(
+                        "$discarded were discarded: the free version holds up to " +
+                            "${FreeTier.MAX_ENTRIES} entries.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.testTag("import_cap_warning"),
+                    )
+                }
                 Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Done") }
             }
 
@@ -154,6 +178,16 @@ fun ImportCsvScreen(onBack: () -> Unit) {
                     modifier = Modifier.testTag("import_preview"),
                 )
                 Text("Fields: " + p.fieldNames.joinToString(", "), style = MaterialTheme.typography.bodySmall)
+                val dropped = p.entryCount - willImport(p.entryCount)
+                if (dropped > 0) {
+                    Text(
+                        "Only ${willImport(p.entryCount)} will be imported — the free version holds " +
+                            "up to ${FreeTier.MAX_ENTRIES} entries, so $dropped will be discarded.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.testTag("import_preview_cap"),
+                    )
+                }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
@@ -171,10 +205,20 @@ fun ImportCsvScreen(onBack: () -> Unit) {
                 }
 
                 Button(
-                    enabled = !busy,
+                    enabled = !busy && willImport(p.entryCount) > 0,
                     onClick = { if (mode == ImportMode.REPLACE) confirmReplace = true else commit() },
                     modifier = Modifier.fillMaxWidth().testTag("confirm_import"),
-                ) { Text(if (mode == ImportMode.REPLACE) "Replace vault with import" else "Add ${p.entryCount} entries") }
+                ) {
+                    Text(
+                        if (mode == ImportMode.REPLACE) {
+                            "Replace vault with import"
+                        } else if (willImport(p.entryCount) == 0) {
+                            "No room — the vault already holds ${FreeTier.MAX_ENTRIES} entries"
+                        } else {
+                            "Add ${willImport(p.entryCount)} entries"
+                        },
+                    )
+                }
             }
         }
     }
@@ -186,7 +230,8 @@ fun ImportCsvScreen(onBack: () -> Unit) {
             text = {
                 Text(
                     "Every existing entry will be permanently deleted and replaced with the " +
-                        "${preview?.entryCount ?: 0} imported entries. This cannot be undone.",
+                        "${minOf(preview?.entryCount ?: 0, FreeTier.MAX_ENTRIES)} imported entries. " +
+                        "This cannot be undone.",
                 )
             },
             confirmButton = {
@@ -240,7 +285,7 @@ fun ExportCsvScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Export CSV") },
+                title = { Text(FreeTier.title("Export CSV")) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

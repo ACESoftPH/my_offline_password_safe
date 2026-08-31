@@ -51,6 +51,7 @@ import com.acesoftph.offlinepasswordwallet.ui.components.BottomBarClearance
 import com.acesoftph.offlinepasswordwallet.ui.components.SectionHeader
 import com.acesoftph.offlinepasswordwallet.ui.components.SettingRow
 import com.acesoftph.offlinepasswordwallet.ui.components.WalletCard
+import com.acesoftph.offlinepasswordwallet.tier.FreeTier
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -123,7 +124,7 @@ fun SettingsScreen(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Settings") }) },
+        topBar = { TopAppBar(title = { Text(FreeTier.title("Settings")) }) },
         bottomBar = bottomBar,
     ) { padding ->
         Column(
