@@ -638,7 +638,7 @@ Defaults (length, specials on/off) are configurable in Settings.
 | Hostile KDF parameters in a vault/backup file (CPU-pinning DoS, or a silently weakened KDF) | Iterations, algorithm, key length and salts are range-checked before reaching the KDF; out-of-range is a format error. |
 | Bypassing the recovery throttle by wiping/locking its state file, or by moving the clock | Corrupt state = maximum penalty; in-memory tally floors the count; deadline enforced on both wall and monotonic clocks. |
 | A CSV export detonating in a spreadsheet (formula injection) | Values starting with `= + - @` TAB CR are neutralized on export and restored on import. |
-| Shoulder-surfing / screen capture | Passwords masked with `#`; `FLAG_SECURE` on by default (blocks screenshots, screen recording, recents preview). |
+| Shoulder-surfing / screen capture | Passwords masked with `*` (fixed width, so the mask does not leak the real length); `FLAG_SECURE` on by default (blocks screenshots, screen recording, recents preview). |
 | App left open | Inactivity auto-lock + lock-on-background; references cleared. |
 | Clipboard scraping | Sensitive-flagged clips + timed auto-clear. |
 | OS backup exfiltration | Backup and device-transfer fully disabled for all domains. |

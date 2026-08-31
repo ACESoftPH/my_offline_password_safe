@@ -27,7 +27,7 @@ you prefer to upload the native captures.
 
 1. **Locked vault** — the lock screen; nothing is revealed before authentication
 2. **Vault list** — entries with search
-3. **Entry detail** — password masked with `#`, per-field copy, SHOW toggle
+3. **Entry detail** — password masked with `*`, per-field copy, SHOW toggle
 4. **Password generator** — length slider, restricted symbol set
 5. **Security settings** — biometric unlock, auto-lock timeout
 6. **Encrypted backup** — export protected by its own passphrase

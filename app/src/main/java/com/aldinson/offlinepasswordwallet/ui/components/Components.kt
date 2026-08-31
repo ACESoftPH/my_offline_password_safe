@@ -33,9 +33,18 @@ import androidx.compose.ui.unit.dp
 import com.aldinson.offlinepasswordwallet.password.PasswordStrength
 import com.aldinson.offlinepasswordwallet.password.StrengthResult
 
-/** The censor rendering used everywhere a hidden password is shown (§8). */
-const val CENSOR_CHAR = '#'
-private const val CENSOR_DISPLAY = "##########" // fixed length; does not leak real length
+/**
+ * The censor rendering used everywhere a hidden password is shown.
+ *
+ * Both the editable field's mask and the read-only detail row derive from this
+ * single character, so the two can never disagree about what a hidden password
+ * looks like.
+ */
+const val CENSOR_CHAR = '*'
+
+/** Fixed length on purpose: a hidden value must not leak how long it really is. */
+private const val CENSOR_DISPLAY_LENGTH = 10
+private val CENSOR_DISPLAY = CENSOR_CHAR.toString().repeat(CENSOR_DISPLAY_LENGTH)
 
 fun censored(): String = CENSOR_DISPLAY
 
