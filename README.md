@@ -1,2 +1,573 @@
-# my_offline_password_safe
-A lightweight offline password safe
+# Offline Password Wallet
+
+A **local-only, offline** password manager for Android. No server, no account, no
+cloud, no SQL database, no network permission. Everything lives in a single
+encrypted file in the app's private storage.
+
+- Kotlin · Jetpack Compose · Material 3 · single Activity · manual DI
+- `minSdk 26`, `targetSdk 35`, `compileSdk 35`
+- AES-256-GCM authenticated encryption + PBKDF2-HMAC-SHA256 key derivation
+- Android Keystore-backed, biometric-gated unlock (optional)
+- Five-question master-password **reset** (never "recovery of the old password")
+- Portable **encrypted backup** (`.opwbackup`) + restore, incl. onto a new phone
+- Semicolon-delimited CSV import/export via the Storage Access Framework
+- Inactivity auto-lock + lock-on-background
+- Unit + Robolectric + Compose UI tests
+
+---
+
+## 1. Building & testing
+
+```bash
+# Debug APK
+./gradlew assembleDebug            # -> app/build/outputs/apk/debug/app-debug.apk
+
+# Release APK (R8 + resource shrinking, lint-vital)
+./gradlew assembleRelease          # -> app/build/outputs/apk/release/app-release-unsigned.apk
+
+# JVM + Robolectric unit tests (102 tests)
+./gradlew testDebugUnitTest
+
+# Android lint
+./gradlew lintDebug
+
+# Instrumented UI tests (needs a connected device / emulator)
+./gradlew connectedDebugAndroidTest
+```
+
+The release APK is unsigned; sign it with your own keystore before distribution.
+No `INTERNET` (or any network / storage / location) permission is present in the
+merged manifest — only `USE_BIOMETRIC` / `USE_FINGERPRINT` (pulled in by
+`androidx.biometric`, guarded by `uses-feature ... required=false`).
+
+---
+
+## 2. Application architecture
+
+```
+com.example.offlinepasswordwallet
+├── crypto/            VaultCrypto, SecureRandomProvider, SecurityAnswers,
+│                      CryptoConstants, EncryptedBlob, Base64Util, errors
+├── data/
+│   ├── model/         VaultDocument / VaultEntry / VaultField (decrypted, in-memory)
+│   │                  EncryptedVaultFile / *Dto (on-disk envelope), ImportMode
+│   ├── storage/       VaultCodec (seal/unseal + wrap/unwrap), VaultFileStore (atomic I/O)
+│   ├── backup/        BackupCodec (portable encrypted-backup format), BackupManager
+│   └── repository/    VaultRepository (single source of decrypted state + writes)
+├── security/          MasterPasswordManager, RecoveryManager, RecoveryRateLimiter,
+│                      KeyManager (Keystore), BiometricAuthenticator, AppLockManager
+├── password/          PasswordGenerator, PasswordStrength
+├── importexport/      Csv (parser/writer), CsvImporter, CsvExporter
+├── settings/          SettingsRepository (DataStore), AppSettings
+├── ui/                MainActivity, WalletRoot (nav), screens/, components/, theme/
+└── di/                ServiceLocator
+```
+
+Cryptographic logic is fully separated from UI. `VaultCrypto` and `VaultCodec`
+are pure, do no I/O, and are unit-tested on a plain JVM (no Android, no
+Robolectric).
+
+### State model
+
+`VaultRepository.state` is a `StateFlow<VaultState>`:
+
+- `Uninitialized` — no vault file exists (first run).
+- `Locked` — a vault file exists but nothing is decrypted in memory.
+- `Unlocked(entries)` — decrypted; a snapshot of entries is exposed.
+
+`WalletRoot` observes this and, whenever it flips to `Locked` / `Uninitialized`,
+wipes the navigation back stack and routes to an auth screen. The decrypted vault
+can never sit behind the lock screen.
+
+---
+
+## 3. Storage architecture
+
+```
+<app private files>/vault/
+├── vault.json           encrypted vault envelope (see §4)
+├── biometric.json       DEK wrapped by an Android Keystore key (only if biometrics on)
+└── recovery_state.json  recovery failed-attempt counter + lockout deadline (no secrets)
+```
+
+- Location is **internal app storage** (`Context.filesDir`). It is not
+  world-readable and not reachable by ordinary file browsing or `adb pull` on a
+  non-rooted device.
+- **OS backup / device-transfer is fully disabled**: `android:allowBackup="false"`
+  plus `res/xml/backup_rules.xml` (API ≤ 30) and
+  `res/xml/data_extraction_rules.xml` (API ≥ 31) that exclude every domain. The
+  vault is intentionally **not** portable through Android backup.
+- Writes are **atomic and crash-safe** (`VaultFileStore.write`):
+  1. serialize → write to `vault.json.tmp`
+  2. `flush()` + `FileDescriptor.sync()` the file, then fsync the directory
+  3. re-read and re-parse the temp file to prove it loads (and the `vaultId` matches)
+  4. atomically `renameTo` the real file (with a copy-then-delete fallback)
+
+  The only existing good file is replaced solely in step 4, so power loss at any
+  point leaves either the old file or the fully-written new file — never a
+  truncated vault.
+- The vault file is **never silently recreated**. If it fails to parse you get a
+  `VaultFormatException`; if it fails to decrypt/authenticate you get the exact
+  message *"Unable to unlock the password vault. The vault file may be corrupted
+  or the password may be incorrect."* The app does not overwrite it with an empty
+  vault.
+
+---
+
+## 4. Encryption architecture
+
+### The envelope (`vault.json`)
+
+```jsonc
+{
+  "formatVersion": 1,
+  "kdf": {
+    "algorithm": "PBKDF2WithHmacSHA256",
+    "masterIterations": 600000,
+    "recoveryIterations": 600000,
+    "keyLengthBits": 256
+  },
+  "masterSaltB64":   "…16 random bytes…",
+  "recoverySaltB64": "…16 random bytes…",
+  "wrappedKeyMaster":   { "ivB64": "…12 bytes…", "ciphertextB64": "…DEK + GCM tag…" },
+  "wrappedKeyRecovery": { "ivB64": "…12 bytes…", "ciphertextB64": "…DEK + GCM tag…" },
+  "payload":            { "ivB64": "…12 bytes…", "ciphertextB64": "…vault JSON + GCM tag…" },
+  "securityQuestions": [ "…the five fixed question texts (not answers)…" ],
+  "vaultId": "uuid",
+  "createdAtEpochMillis": 0,
+  "modifiedAtEpochMillis": 0
+}
+```
+
+### Keys
+
+| Key | How it is obtained | What it protects |
+|-----|--------------------|------------------|
+| **DEK** (Data Encryption Key), 256-bit | `SecureRandom` at vault creation; never stored in the clear | AES-256-GCM seal of the serialized vault JSON (`payload`) |
+| **Master KEK** | `PBKDF2(masterPassword, masterSalt, 600 000)` | AES-256-GCM wrap of the DEK → `wrappedKeyMaster` |
+| **Recovery KEK** | `PBKDF2(join(normalized 5 answers), recoverySalt, 600 000)` | AES-256-GCM wrap of the DEK → `wrappedKeyRecovery` |
+| **Biometric KEK** | AES-256-GCM key generated **inside Android Keystore**, `setUserAuthenticationRequired(true)`, `setInvalidatedByBiometricEnrollment(true)` | AES-256-GCM wrap of the DEK → `biometric.json` |
+
+Every wrapper protects the **same DEK**. Consequences:
+
+- Unlocking = derive/obtain a KEK → GCM-unwrap the DEK → GCM-decrypt the payload.
+  A wrong password/answer fails the GCM tag check on the *wrap*, so it is rejected
+  before the payload is touched.
+- **Changing the master password or the answers only re-wraps the DEK** (new salt,
+  new IV). The large `payload` ciphertext is not re-encrypted, and the operation
+  is a single atomic file write.
+- Knowing `vault.json` reveals nothing without a KEK: the payload and both
+  wrapped DEKs are AES-256-GCM ciphertext with random IVs.
+
+### AES-GCM rules enforced in code
+
+- One **fresh random 96-bit IV per encryption**, generated inside
+  `VaultCrypto.encrypt` — callers cannot pass or reuse an IV.
+- 128-bit GCM tag; authentication failure throws `AeadDecryptionException`
+  (never a silent fallback).
+- No ECB, no unauthenticated mode, no home-made primitives. Only
+  `javax.crypto` / Android Keystore.
+- `SecureRandom` (AndroidOpenSSL CSPRNG) for all salts, IVs, the DEK, and
+  generated passwords. `java.util.Random` / `Math.random()` are never used for
+  anything security-relevant.
+
+### Why PBKDF2 and not Argon2id?
+
+The spec allows PBKDF2-HMAC-SHA256 "with a strong iteration count" if Argon2id is
+"impractical because of dependency/security concerns". Argon2 on Android/JVM means
+bundling a native library. For an offline, security-sensitive app whose main
+selling point is being *small and auditable*, minimising the native dependency
+surface was judged the better trade-off. Mitigations:
+
+- 600 000 iterations (OWASP 2023 floor for PBKDF2-HMAC-SHA256).
+- The KDF parameters live in the vault header, so a future `formatVersion` can
+  raise the count (or switch to Argon2id) and migrate existing vaults on unlock.
+
+---
+
+## 5. Master-password handling
+
+- Taken from the UI as text, converted to a `CharArray` at the call boundary, and
+  zeroed by the caller after use. It is **never** written to disk, SharedPreferences,
+  DataStore, logs, `Bundle`, `Intent` extras, or `SavedStateHandle`.
+- Used only to derive the Master KEK. The app has no code path that stores or
+  returns the master password.
+- Policy (`PasswordStrength.masterPolicyError`): **≥ 10 characters** and **≥ 3
+  character classes**. No artificial maximum length. A live strength meter
+  (rough Shannon-style bit estimate) is shown but never blocks beyond the policy.
+- First run requires: create password → confirm → configure all five security
+  answers → **only then** is the encrypted vault created.
+
+### Change master password (Settings → Security)
+
+1. Verify the current password by attempting a real unwrap (fails →
+   `AeadDecryptionException`).
+2. Derive a new Master KEK from the new password + a new random salt.
+3. Re-wrap the DEK; atomic file write.
+4. The old password no longer unwraps anything.
+
+---
+
+## 6. Security questions & master-password **reset**
+
+The five questions are fixed (exactly these, no more, no fewer):
+
+1. What was the name of your first school?
+2. What was the name of your favorite pet?
+3. What is your mother's maiden name?
+4. What is your father's middle name?
+5. In what year did you graduate from college?
+
+### Answer normalization (deliberate, documented, stable)
+
+`SecurityAnswers.normalize`:
+
+1. Unicode **NFKC** normalization.
+2. Trim leading/trailing whitespace.
+3. Collapse internal whitespace runs to a single ASCII space.
+4. **Lowercase** with `Locale.ROOT` — **case is ignored**.
+
+The five normalized answers are joined with the ASCII Unit Separator (`0x1F`,
+which cannot occur in normalized text) and that string is the PBKDF2 passphrase.
+
+### Why the original master password is never shown
+
+A correctly built password manager **cannot** show your old master password
+because it never stores it — only a KDF-derived key that wraps the DEK. The app
+therefore uses the words **"Reset your master password"**, never "recover".
+
+### Reset flow (`RecoveryManager`)
+
+```
+five answers ─▶ normalize ─▶ PBKDF2 ─▶ Recovery KEK
+             ─▶ GCM-unwrap wrappedKeyRecovery  ── tag fails ▶ "answers incorrect" (vault untouched)
+             ─▶ DEK recovered  ─▶ vault unlocked via recovery
+             ─▶ user picks a NEW master password
+             ─▶ DEK re-wrapped under the new Master KEK (new salt) ─▶ atomic write
+             ─▶ continue using the wallet
+```
+
+- Wrong answers **never touch the vault file**, so a failed attempt cannot
+  destroy data.
+- **Rate limiting** (`RecoveryRateLimiter`, persisted to
+  `recovery_state.json` so an app restart can't reset it): 4 free attempts, then
+  escalating lockouts 30 s → 2 m → 10 m → 30 m → 1 h. A successful verification
+  clears the counter.
+- The old master password is never derived, displayed, or logged.
+
+### Change security answers (Settings → Security)
+
+Requires the current master password (verified by a real unwrap), then re-derives
+the Recovery KEK from the new answers + a new salt and re-wraps the DEK
+atomically. Old answers stop working; the master password is unaffected.
+
+**Warning shown during setup:** answers based on personal facts are far lower
+entropy than a random recovery key, so this path is the weakest link — it is
+rate-limited and you should treat the answers as sensitive as the password.
+
+---
+
+## 7. CSV format
+
+- **Delimiter is `;` (semicolon)**, not comma — this is the primary/default
+  format, matching the supplied `PasswordSafe_template.csv`.
+- Template header / default fields:
+  `Title;Category;Username;Password;Website;Comments`
+- The field count is **not** hard-coded to six. Row 1 of an imported CSV is
+  always treated as the field definition; extra columns (e.g. `PIN`,
+  `Account Number`) automatically become **custom fields**.
+
+### Parser (`Csv`, `importexport/`)
+
+A hand-written RFC-4180-style state machine (not `split(";")`), unit-tested for:
+semicolon delimiters, quoted fields, semicolons inside quotes, doubled quotes
+inside fields, newlines inside quoted fields, LF / CR / CRLF line endings, empty
+values, a leading UTF-8 BOM, and arbitrary Unicode. Blank header cells become
+`Column N`; duplicate header names are disambiguated (`Title`, `Title (2)`, …) so
+one entry never carries two identically-named fields.
+
+### Import (`Menu → Import / Export → Import CSV`)
+
+- File chosen via Storage Access Framework (`ACTION_OPEN_DOCUMENT`). No storage
+  permission.
+- The file is read **fully into memory**, parsed, and shown as
+  *"Found N entries and M fields. Import?"* with the field list.
+- Two modes: **Add to vault** (default, append) or **Replace entire vault**
+  (behind a second explicit confirmation dialog). Existing entries are never
+  overwritten without confirmation.
+- On commit the entries are added to the in-memory vault and **immediately
+  re-encrypted** (atomic write). No plaintext copy is kept.
+
+### Export (`Menu → Import / Export → Export CSV`)
+
+- Requires ticking *"I understand the exported CSV is plaintext"* first.
+- Columns = union of all field names (the six template fields first, then custom
+  fields in first-seen order); missing values export as empty.
+- Written straight to a user-chosen SAF `CREATE_DOCUMENT` URI. The app keeps no
+  copy and never transmits it.
+
+**The CSV export is intentionally plaintext** — CSV interoperability requires it.
+The app says so plainly and never pretends otherwise. See §10.
+
+---
+
+## 7b. Encrypted backup & restore
+
+For moving to a new phone, or recovering after the app/device is lost or
+compromised, the wallet can export a **portable encrypted backup** and restore
+from it. This is separate from CSV — the backup is never plaintext.
+
+Menu: `Import / Export → Export encrypted backup` and
+`Import / Export → Restore from encrypted backup` (also in `Settings → Data`).
+"Restore" is additionally offered on the **Unlock** screen and the **first-run
+Setup** screen, so a fresh install can be restored without any prior vault.
+
+### File format (`*.opwbackup`)
+
+A small JSON envelope (magic `OPW-ENCRYPTED-BACKUP`, `formatVersion` 1):
+
+```jsonc
+{
+  "magic": "OPW-ENCRYPTED-BACKUP",
+  "formatVersion": 1,
+  "kdf": { "algorithm": "PBKDF2WithHmacSHA256", "iterations": 600000, "keyLengthBits": 256 },
+  "saltB64": "…16 random bytes…",
+  "payload": { "ivB64": "…12 bytes…", "ciphertextB64": "…VaultDocument JSON + GCM tag…" },
+  "entryCount": 42,               // non-sensitive, shown on the restore screen
+  "createdAtEpochMillis": 0,
+  "appVersionName": "1.0.0"
+}
+```
+
+- `payload` is **AES-256-GCM** ciphertext of the serialized `VaultDocument`
+  (entries + fields), under a key = `PBKDF2-HMAC-SHA256(backupPassphrase,
+  saltB64, 600 000)`. Fresh random salt per export; fresh random 96-bit IV per
+  export (generated inside `VaultCrypto.encrypt`).
+- The backup passphrase is **independent** of the master password, the security
+  answers, and any Android Keystore key. Nothing device-bound is in the file, so
+  it restores on any device.
+- The backup contains **only** the vault document. It does **not** contain the
+  master password, the security-question answers, or the biometric key.
+- Wrong passphrase / tampering → `BackupDecryptionException`; a non-backup file →
+  `BackupFormatException`. Neither ever touches the existing vault.
+
+### Export (`BackupManager.exportBytes`)
+
+Requires the vault unlocked. Prompts for a backup passphrase + confirmation
+(subject to the same ≥10-char / ≥3-class policy as the master password) with a
+strength meter, then writes the file to a user-chosen SAF `CREATE_DOCUMENT` URI
+(`offline-password-wallet-YYYY-MM-DD.opwbackup`). The app keeps no copy and never
+transmits it.
+
+### Restore (`BackupManager.previewAndDecrypt` → `restoreAsNewVault` / `mergeIntoUnlockedVault`)
+
+1. Pick the file (SAF `OPEN_DOCUMENT`, read into memory only) + enter the backup
+   passphrase → decrypt → preview *"N entries · created … · app …"*.
+2. Then:
+   - **Fresh install / locked vault**: choose a **new master password** and
+     **new security answers**; the app builds a brand-new `vault.json` around the
+     restored entries (`VaultCodec.createVault`) via an atomic write. If a vault
+     already existed on the device, a strong confirmation dialog is required
+     first, and biometric login is turned off (the restored vault has a new DEK,
+     so the old device-bound biometric wrapping is stale).
+   - **Vault already unlocked**: optionally just **add** the backup's entries to
+     the current vault (re-encrypted immediately), or take the replace path
+     above.
+
+Losing the backup passphrase makes that backup unrecoverable — by design.
+
+---
+
+## 8. Auto-lock & lifecycle
+
+`AppLockManager` (time source: `SystemClock.elapsedRealtime`, monotonic, counts
+device sleep):
+
+- Timeout options (Settings → Security → Auto-Lock Timeout): 30 s, 1 m, 2 m,
+  5 m (**default**), 10 m, 30 m, Never.
+- `MainActivity.onUserInteraction()` feeds every touch / key / nav event to the
+  manager, resetting the idle timer.
+- A 1-second monitor coroutine locks the vault when
+  `now - lastInteraction ≥ timeout`.
+- `WalletApplication` observes `ProcessLifecycleOwner`: on background it records
+  the time; on foreground, if the elapsed background time ≥ timeout, it locks
+  immediately.
+- "Locking" means `VaultRepository.lock()`: drop the `VaultDocument`, the DEK and
+  the envelope references, best-effort zero the DEK bytes, publish `Locked`, and
+  the UI falls back to the unlock screen. Sensitive screens are left; nothing
+  decrypted is reachable until re-authentication.
+
+**Honest limitation:** Android does not guarantee an app can terminate its own
+process, and this app does **not** claim to. It clears references and returns to
+authentication; it cannot guarantee every byte is gone from RAM (see §9).
+
+`FLAG_SECURE` is set on the window whenever "Block screenshots" is enabled
+(default on), which also hides the app contents from the recents thumbnail.
+
+---
+
+## 9. Memory security & its limits
+
+- Decrypted vault data exists only while `Unlocked`; it is dropped on lock.
+- Password/answer inputs are handled as `CharArray` at call boundaries and zeroed
+  after use; PBKDF2 `PBEKeySpec.clearPassword()` is called; derived key byte
+  arrays are `fill(0)`-ed after use.
+- **JVM `String` immutability**: values that reach a Compose `TextField`, JSON
+  serialization, or the clipboard are `String`s. Kotlin/JVM strings are immutable
+  and their backing `char[]` cannot be reliably wiped; the GC may keep copies
+  until collected, and the OS may page memory. Memory clearing here **reduces
+  the window**, it does not eliminate it. This is a fundamental JVM constraint,
+  not a bug.
+- No decrypted content is placed in `Bundle`, `Intent` extras, `SavedStateHandle`
+  or `rememberSaveable`. Edit-screen fields use plain `remember`; the Activity
+  sets `configChanges` so rotation does not recreate the screen, and after real
+  process death the vault is locked and re-authentication is required.
+- No logging of any kind in the codebase (`grep` for `Log.` / `println` returns
+  nothing). Release builds additionally strip `android.util.Log` and
+  `PrintStream` calls via R8 `-assumenosideeffects`.
+
+---
+
+## 10. Clipboard (§9 of the spec)
+
+`ClipboardUtil` is the only copy path:
+
+- API 33+ : the clip is flagged `EXTRA_IS_SENSITIVE`, so the OS clipboard preview
+  does not display the value.
+- After a configurable delay (default 30 s, Settings slider) the app clears the
+  clipboard **if our value is still the current clip** — `clearPrimaryClip()` on
+  API 28+, overwrite with a space on API 26–27.
+- Passwords are never logged.
+
+**Limitation:** another app or a clipboard-manager may read the value before it
+is cleared; Android gives apps no way to prevent that.
+
+---
+
+## 11. Password generator
+
+`PasswordGenerator` (`SecureRandom` only):
+
+- Length slider **8–64**, default **20**; the current value is shown
+  (`Password Length: 24`).
+- Character sets: lowercase `a-z`, uppercase `A-Z`, digits `0-9`, and — only when
+  "Use special characters" is ON — exactly `!@#$%^&*()_-+=<>.?{[}]~|` and nothing
+  else.
+- Guarantees per generated password: ≥ 1 lowercase, ≥ 1 uppercase, ≥ 1 digit, and
+  ≥ 1 special **iff** specials are enabled; **only** characters from the enabled
+  sets.
+- The guaranteed characters are placed first, then the rest is filled from the
+  full enabled pool, then the whole array is **Fisher–Yates shuffled with
+  `SecureRandom`** so there is no positional pattern.
+- The generator opens with a password already generated; **Generate Again**
+  re-rolls. It is never mandatory — the Password field is always a normal,
+  manually-editable text field.
+
+Defaults (length, specials on/off) are configurable in Settings.
+
+---
+
+## 12. Biometric login
+
+- Off by default. Toggle in Settings → Security → Biometric login.
+- Uses AndroidX `BiometricPrompt` with `BIOMETRIC_STRONG` (class 3) only. **No
+  custom fingerprint/face code exists**; the OS does all matching and never
+  exposes raw biometric data to the app.
+- Enabling: generate the Keystore key → `BiometricPrompt` authorizes an
+  encrypt-mode `Cipher` → wrap the current DEK → store `biometric.json`.
+- Unlocking: `BiometricPrompt` authorizes a decrypt-mode `Cipher` (bound to the
+  stored IV) → unwrap the DEK → unlock. The negative button is
+  **"Use master password"**.
+- Revocable: disabling deletes the Keystore key **and** the wrapped blob.
+- Invalidation handled: new biometric enrollment, removed biometrics, lock-screen
+  changes and Keystore key invalidation all cause a
+  `BiometricKeyInvalidatedException`; the app then disables biometric login,
+  deletes the key material, and falls back to master-password unlock, inviting
+  you to re-enable.
+- If biometrics are unavailable/none-enrolled, the option is simply not offered;
+  master password always works.
+
+---
+
+## 13. Threat model
+
+**In scope / mitigated**
+
+| Threat | Mitigation |
+|--------|-----------|
+| Lost/stolen locked device, attacker reads `vault.json` | AES-256-GCM payload + wrapped DEKs; only a PBKDF2 KEK (600k iters) or a Keystore-gated key can unwrap. Offline guessing is bounded by master-password entropy. |
+| Tampering with the vault file | GCM authentication fails → explicit corruption/incorrect-password error; no silent acceptance. |
+| Shoulder-surfing / screen capture | Passwords masked with `#`; `FLAG_SECURE` on by default (blocks screenshots, screen recording, recents preview). |
+| App left open | Inactivity auto-lock + lock-on-background; references cleared. |
+| Clipboard scraping | Sensitive-flagged clips + timed auto-clear. |
+| OS backup exfiltration | Backup and device-transfer fully disabled for all domains. |
+| Network exfiltration | No `INTERNET` permission; nothing to exfiltrate over. |
+| Stolen `.opwbackup` file | AES-256-GCM under a dedicated PBKDF2 (600k) backup passphrase, independent of (and typically stronger than) the security answers; contains no master password / answers / keystore material. |
+| Brute-forcing recovery answers | Persistent, escalating rate limiting; answers never leave the device. |
+| Weak/duplicate KDF outputs | Unique random salt per KEK; unique random IV per encryption (enforced in code). |
+
+**Out of scope / NOT protected — see §14.**
+
+---
+
+## 14. Security Limitations
+
+No password manager can protect your data if:
+
+- **The device itself is compromised** — a rooted/jailbroken device, a malicious
+  custom ROM, or a kernel-level exploit can read another app's memory and private
+  files regardless of app-level encryption.
+- **Malware has sufficient privileges** — an accessibility-service abuser, a
+  screen-reader trojan, a keylogger, or a clipboard-scraping app running with the
+  right permissions can capture your master password as you type it or entries as
+  you view them.
+- **You export a plaintext CSV and expose it** — CSV export is deliberately
+  unencrypted for interoperability. Anyone who obtains that file can read every
+  password in it. Delete exports you don't need; never sync them to the cloud.
+- **The master password is weak** — the whole scheme's strength ceiling is your
+  master password's entropy. PBKDF2 slows guessing; it does not fix a guessable
+  password.
+- **The security-question answers are guessed** — they are based on personal
+  facts (lower entropy, sometimes publicly discoverable). Someone who knows you,
+  or who researches you, plus enough time against the rate limiter, can reset
+  your master password. This is why setup warns that recovery is the weakest
+  link.
+
+Additional constraints:
+
+- **JVM memory cannot be reliably scrubbed** (see §9). Clearing shortens the
+  exposure window; it cannot guarantee erasure.
+- **`SecureRandom` quality** depends on the device's OS CSPRNG.
+- **Android Keystore** hardware-backing varies by device; on some devices the key
+  is software-emulated, weakening the biometric path's tamper resistance (the
+  master-password path is unaffected).
+- **The clipboard** may be read by other apps before auto-clear.
+- Using encryption **does not by itself make the app secure**. The security model
+  is exactly what is described in this document — its strength is bounded by the
+  master password, the device's integrity, and the choices above.
+
+---
+
+## 15. Backup considerations
+
+- The app does **not** synchronize with any cloud service and requests no network
+  access. It is entirely offline.
+- Android Auto Backup / cloud backup / device-to-device transfer are disabled for
+  every data domain, so the encrypted vault and Keystore-wrapped key material are
+  not silently copied off the device.
+- The supported way to move data between installs/devices is the **encrypted
+  backup** (§7b): a `.opwbackup` file whose contents are AES-256-GCM encrypted
+  under a dedicated backup passphrase (PBKDF2-HMAC-SHA256, 600 000 iterations).
+  Store the file **and** its passphrase somewhere safe; the file is only as
+  strong as that passphrase, and losing the passphrase makes it unrecoverable.
+  The app writes it only where you choose and never uploads it.
+- A **plaintext CSV export** (§7, §14) also exists for interoperability with other
+  tools — that one is *not* encrypted and is clearly warned as such.
+
+---
+
+## 16. What is deliberately NOT here
+
+No server, REST API, SQL/Room/SQLite, cloud sync, account/registration, email or
+social login, ads, analytics, tracking, or any internet-dependent service. The
+architecture is kept small and auditable on purpose.
