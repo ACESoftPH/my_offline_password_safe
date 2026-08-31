@@ -22,8 +22,11 @@ encrypted file in the app's private storage.
 # Debug APK
 ./gradlew assembleDebug            # -> app/build/outputs/apk/debug/app-debug.apk
 
-# Release APK (R8 + resource shrinking, lint-vital)
-./gradlew assembleRelease          # -> app/build/outputs/apk/release/app-release-unsigned.apk
+# Release APK, for sideloading (R8 + resource shrinking, lint-vital)
+./gradlew assembleRelease          # -> app/build/outputs/apk/release/app-release.apk
+
+# Release App Bundle, for Google Play
+./gradlew bundleRelease            # -> app/build/outputs/bundle/release/app-release.aab
 
 # JVM + Robolectric unit tests (146 tests)
 ./gradlew testDebugUnitTest
@@ -35,17 +38,54 @@ encrypted file in the app's private storage.
 ./gradlew connectedDebugAndroidTest
 ```
 
-The release APK is unsigned; sign it with your own keystore before distribution.
 No `INTERNET` (or any network / storage / location) permission is present in the
 merged manifest — only `USE_BIOMETRIC` / `USE_FINGERPRINT` (pulled in by
 `androidx.biometric`, guarded by `uses-feature ... required=false`).
+
+### Release signing
+
+Signing is optional and driven by a git-ignored `keystore.properties` in the
+project root:
+
+```properties
+storeFile=keystore/release.jks
+storePassword=…
+keyAlias=…
+keyPassword=…
+```
+
+Generate a key with:
+
+```bash
+keytool -genkeypair -v -keystore keystore/release.jks -storetype PKCS12 \
+  -alias <alias> -keyalg RSA -keysize 4096 -validity 10000
+```
+
+Both `keystore.properties` and `keystore/` are git-ignored, so a fresh clone
+builds without anyone's private key — it just produces an unsigned release
+artifact. **Keep the keystore and its passwords backed up**: on Google Play this
+is the *upload key*, and losing it means asking Google to reset it before you can
+publish another update.
+
+### Play requirements this build already satisfies
+
+- `applicationId` is `com.aldinson.offlinepasswordwallet` (Play rejects
+  `com.example.*`).
+- `targetSdk 35`, meeting Play's current target-API requirement.
+- **16 KB page size**: the two bundled native libraries
+  (`libandroidx.graphics.path.so`, `libdatastore_shared_counter.so`) have
+  `p_align = 0x4000` LOAD segments and the APK passes
+  `zipalign -c -P 16 4`, which Play requires for apps targeting Android 15+.
+- The R8 mapping file is embedded in the bundle
+  (`BUNDLE-METADATA/…/proguard.map`), so Play deobfuscates crash reports without
+  a separate upload.
 
 ---
 
 ## 2. Application architecture
 
 ```
-com.example.offlinepasswordwallet
+com.aldinson.offlinepasswordwallet
 ├── crypto/            VaultCrypto, SecureRandomProvider, SecurityAnswers,
 │                      CryptoConstants, EncryptedBlob, Base64Util, errors
 ├── data/

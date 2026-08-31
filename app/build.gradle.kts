@@ -29,11 +29,11 @@ val hasReleaseSigning = keystoreProperties.getProperty("storeFile")
     ?.let { rootProject.file(it).exists() } == true
 
 android {
-    namespace = "com.example.offlinepasswordwallet"
+    namespace = "com.aldinson.offlinepasswordwallet"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.offlinepasswordwallet"
+        applicationId = "com.aldinson.offlinepasswordwallet"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

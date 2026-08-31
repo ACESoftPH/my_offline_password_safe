@@ -21,3 +21,4 @@ local.properties
 
 # Built APKs are release artifacts, not source.
 *.apk
+*.aab
