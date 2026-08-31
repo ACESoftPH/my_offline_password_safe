@@ -1,5 +1,7 @@
 <resources>
-    <color name="window_background">#FFFBFE</color>
-    <!-- Brand green; the launcher icon background gradient is built from this. -->
-    <color name="brand_green">#1B4332</color>
+    <!-- Window background painted before Compose draws, so it must match the
+         theme's background or the app flashes a different colour on launch. -->
+    <color name="window_background">#F2F2F4</color>
+    <color name="brand_orange">#FF7A1A</color>
+    <color name="ic_launcher_background">#0F0F10</color>
 </resources>

@@ -12,6 +12,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.acesoftph.offlinepasswordwallet.data.repository.VaultState
 import com.acesoftph.offlinepasswordwallet.di.ServiceLocator
+import com.acesoftph.offlinepasswordwallet.ui.components.WalletBottomBar
+import com.acesoftph.offlinepasswordwallet.ui.components.WalletTab
 import com.acesoftph.offlinepasswordwallet.ui.navigation.Dest
 import com.acesoftph.offlinepasswordwallet.ui.screens.ChangeMasterPasswordScreen
 import com.acesoftph.offlinepasswordwallet.ui.screens.ChangeSecurityAnswersScreen
@@ -83,11 +85,28 @@ private val HANDOFF_ROUTES = setOf(Dest.SETUP, Dest.UNLOCK)
 /** Auth screens that own their own completion and must not be navigated away from. */
 private val MULTI_STEP_AUTH_ROUTES = setOf(Dest.RECOVERY, Dest.RESTORE_BACKUP)
 
+/** The three destinations the bottom bar switches between. */
+private val TAB_ROUTES = mapOf(
+    WalletTab.ENTRIES to Dest.LIST,
+    WalletTab.GENERATOR to Dest.GENERATOR,
+    WalletTab.SETTINGS to Dest.SETTINGS,
+)
+
 private fun NavHostController.resetTo(route: String) {
     if (currentDestination?.route == route) return
     navigate(route) {
         popUpTo(graph.id) { inclusive = true }
         launchSingleTop = true
+    }
+}
+
+/** Switches top-level tab without stacking duplicates of the three roots. */
+private fun NavHostController.switchTab(route: String) {
+    if (currentDestination?.route == route) return
+    navigate(route) {
+        popUpTo(Dest.LIST) { inclusive = route == Dest.LIST; saveState = true }
+        launchSingleTop = true
+        restoreState = true
     }
 }
 
@@ -124,18 +143,42 @@ private fun NavGraphBuilder.authGraph(navController: NavHostController) {
 }
 
 private fun NavGraphBuilder.vaultGraph(navController: NavHostController, activity: FragmentActivity) {
+
+    @Composable
+    fun bar(selected: WalletTab) {
+        WalletBottomBar(
+            selected = selected,
+            onSelect = { tab -> TAB_ROUTES[tab]?.let { navController.switchTab(it) } },
+        )
+    }
+
     composable(Dest.LIST) {
         VaultListScreen(
             onOpenEntry = { id -> navController.navigate(Dest.detail(id)) },
             onAddEntry = { navController.navigate(Dest.edit(Dest.NEW_ENTRY_ID)) },
-            onOpenSettings = { navController.navigate(Dest.SETTINGS) },
-            onOpenGenerator = { navController.navigate(Dest.GENERATOR) },
+            bottomBar = { bar(WalletTab.ENTRIES) },
+        )
+    }
+    composable(Dest.GENERATOR) {
+        PasswordGeneratorScreen(
+            onBack = null,
+            onUse = null,
+            bottomBar = { bar(WalletTab.GENERATOR) },
+        )
+    }
+    composable(Dest.SETTINGS) {
+        SettingsScreen(
+            activity = activity,
+            onChangeMaster = { navController.navigate(Dest.CHANGE_MASTER) },
+            onChangeAnswers = { navController.navigate(Dest.CHANGE_ANSWERS) },
             onImport = { navController.navigate(Dest.IMPORT_CSV) },
             onExport = { navController.navigate(Dest.EXPORT_CSV) },
             onExportBackup = { navController.navigate(Dest.EXPORT_BACKUP) },
             onRestoreBackup = { navController.navigate(Dest.RESTORE_BACKUP) },
+            bottomBar = { bar(WalletTab.SETTINGS) },
         )
     }
+
     composable(Dest.DETAIL) { backStackEntry ->
         val id = backStackEntry.arguments?.getString("entryId").orEmpty()
         EntryDetailScreen(
@@ -150,21 +193,6 @@ private fun NavGraphBuilder.vaultGraph(navController: NavHostController, activit
             entryId = id,
             onBack = { navController.popBackStack() },
             onSaved = { navController.popBackStack() },
-        )
-    }
-    composable(Dest.GENERATOR) {
-        PasswordGeneratorScreen(onBack = { navController.popBackStack() }, onUse = null)
-    }
-    composable(Dest.SETTINGS) {
-        SettingsScreen(
-            activity = activity,
-            onBack = { navController.popBackStack() },
-            onChangeMaster = { navController.navigate(Dest.CHANGE_MASTER) },
-            onChangeAnswers = { navController.navigate(Dest.CHANGE_ANSWERS) },
-            onImport = { navController.navigate(Dest.IMPORT_CSV) },
-            onExport = { navController.navigate(Dest.EXPORT_CSV) },
-            onExportBackup = { navController.navigate(Dest.EXPORT_BACKUP) },
-            onRestoreBackup = { navController.navigate(Dest.RESTORE_BACKUP) },
         )
     }
     composable(Dest.CHANGE_MASTER) {

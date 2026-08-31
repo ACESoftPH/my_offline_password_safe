@@ -68,18 +68,16 @@ class WalletUiTest {
                 .getOrDefault(false)
         }
         rule.onNodeWithText("Facebook Account").performClick()
-        // On the detail screen the password row exposes a SHOW toggle => censored.
-        rule.waitUntil(5_000) {
-            runCatching { rule.onNodeWithText("SHOW").assertIsDisplayed(); true }.getOrDefault(false)
-        }
+        // On the detail screen the password row exposes a reveal toggle => censored.
+        rule.waitUntil(5_000) { visible("field_row_Password") }
+        rule.onNodeWithContentDescription("Show Password").assertIsDisplayed()
         rule.onNodeWithTag("field_row_Password").assertIsDisplayed()
     }
 
     @Test
     fun passwordGenerator_producesAPasswordAndRegenerates() {
         completeSetup()
-        rule.onNodeWithContentDescription("More").performClick()
-        rule.onNodeWithText("Password generator").performClick()
+        rule.onNodeWithContentDescription("Generate").performClick()
         rule.onNodeWithTag("generated_password").assertIsDisplayed()
         rule.onNodeWithTag("generate_again").performClick()
         rule.onNodeWithTag("generated_password").assertIsDisplayed()
@@ -88,8 +86,9 @@ class WalletUiTest {
     @Test
     fun exportEncryptedBackup_reachableFromMenu() {
         completeSetup()
-        rule.onNodeWithContentDescription("More").performClick()
-        rule.onNodeWithText("Import / Export → Export encrypted backup").performClick()
+        rule.onNodeWithContentDescription("Settings").performClick()
+        rule.waitUntil(5_000) { visible("nav_export_backup") }
+        rule.onNodeWithTag("nav_export_backup").performClick()
         rule.waitUntil(5_000) { visible("backup_passphrase") }
         rule.onNodeWithTag("backup_passphrase").performTextInput("Backup-Pass-Phrase-1")
         rule.onNodeWithTag("backup_passphrase_confirm").performTextInput("Backup-Pass-Phrase-1")

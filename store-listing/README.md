@@ -5,6 +5,10 @@ same `ic_launcher_foreground.xml` the app ships, and the screenshots are real
 captures of the release APK running on an emulator (Android 16, 1080×2400). No
 mockups.
 
+Screenshots are taken in **dark mode**, which is where the black/gray/orange
+palette reads most clearly. The app follows the system setting and has a fully
+worked light theme too.
+
 Regenerate with `store-listing/generate.py` (see "Regenerating" below).
 
 ## Files
@@ -27,7 +31,7 @@ you prefer to upload the native captures.
 
 1. **Locked vault** — the lock screen; nothing is revealed before authentication
 2. **Vault list** — entries with search
-3. **Entry detail** — password masked with `*`, per-field copy, SHOW toggle
+3. **Entry detail** — password masked with `*`, per-field copy, reveal toggle
 4. **Password generator** — length slider, restricted symbol set
 5. **Security settings** — biometric unlock, auto-lock timeout
 6. **Encrypted backup** — export protected by its own passphrase

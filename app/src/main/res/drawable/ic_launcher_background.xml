@@ -1,7 +1,7 @@
 <!--
   Offline Password Wallet launcher icon (background layer).
 
-  A flat deep-green field with a subtle diagonal gradient. Fills the whole 108x108
+  A near-black field with a subtle diagonal gradient. Fills the whole 108x108
   viewport, including the 18dp bleed each launcher mask may crop into.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
@@ -17,9 +17,9 @@
                 android:endX="108"
                 android:endY="108"
                 android:type="linear">
-                <item android:color="#FF215C3F" android:offset="0" />
-                <item android:color="#FF1B4332" android:offset="0.55" />
-                <item android:color="#FF12301F" android:offset="1" />
+                <item android:color="#FF232326" android:offset="0" />
+                <item android:color="#FF141416" android:offset="0.55" />
+                <item android:color="#FF08080A" android:offset="1" />
             </gradient>
         </aapt:attr>
     </path>

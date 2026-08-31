@@ -114,9 +114,11 @@ def font(size, weight="Regular"):
         pass
     return f
 
+ARTWORK = (0xFF, 0x7A, 0x1A)   # brand orange, matching ic_launcher_foreground.xml
+
 # ---------------------------------------------------------------- background
 # Mirrors ic_launcher_background.xml: linear gradient across the 108 viewport.
-STOPS = [(0.00, (0x21, 0x5C, 0x3F)), (0.55, (0x1B, 0x43, 0x32)), (1.00, (0x12, 0x30, 0x1F))]
+STOPS = [(0.00, (0x23, 0x23, 0x26)), (0.55, (0x14, 0x14, 0x16)), (1.00, (0x08, 0x08, 0x0A))]
 
 def lerp(a, b, t):
     return tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3))
@@ -159,7 +161,7 @@ def icon(out_px=512, crop_units=78.0):
     """
     big = int(round(out_px * 108.0 / crop_units))
     bg = diagonal_gradient(big, big)
-    fg = Image.new("RGB", (big, big), (255, 255, 255))
+    fg = Image.new("RGB", (big, big), ARTWORK)
     bg.paste(fg, (0, 0), artwork_mask(big).convert("L"))
     off = int(round((big - out_px) / 2))
     return bg.crop((off, off, off + out_px, off + out_px))
@@ -174,13 +176,13 @@ def feature_graphic(w=1024, h=500):
     rd = ImageDraw.Draw(ring)
     cx, cy = int(w * 0.845), int(h * 0.5)
     for r in range(300, 90, -46):
-        rd.ellipse([cx - r, cy - r, cx + r, cy + r], outline=(255, 255, 255, 16), width=3)
+        rd.ellipse([cx - r, cy - r, cx + r, cy + r], outline=(255, 122, 26, 26), width=3)
     img = Image.alpha_composite(img.convert("RGBA"), ring).convert("RGB")
     d = ImageDraw.Draw(img)
 
     # the app mark
     mark_px = 236
-    mark_bg = Image.new("RGB", (mark_px, mark_px), (255, 255, 255))
+    mark_bg = Image.new("RGB", (mark_px, mark_px), ARTWORK)
     m = artwork_mask(int(mark_px * 108 / 78))
     off = (m.size[0] - mark_px) // 2
     m = m.crop((off, off, off + mark_px, off + mark_px))
@@ -190,9 +192,9 @@ def feature_graphic(w=1024, h=500):
     d.text((x, 150), "Offline Password", font=font(62, "Bold"), fill=(255, 255, 255))
     d.text((x, 218), "Wallet", font=font(62, "Bold"), fill=(255, 255, 255))
     d.text((x, 300), "Encrypted on your device. No account,",
-           font=font(30, "Regular"), fill=(196, 226, 206))
+           font=font(30, "Regular"), fill=(186, 186, 192))
     d.text((x, 340), "no cloud, no internet permission.",
-           font=font(30, "Regular"), fill=(196, 226, 206))
+           font=font(30, "Regular"), fill=(186, 186, 192))
     return img
 
 if __name__ == "__main__":

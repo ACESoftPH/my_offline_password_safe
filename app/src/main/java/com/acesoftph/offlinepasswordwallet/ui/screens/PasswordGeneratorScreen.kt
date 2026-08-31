@@ -2,21 +2,28 @@ package com.acesoftph.offlinepasswordwallet.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -26,28 +33,40 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.acesoftph.offlinepasswordwallet.di.ServiceLocator
 import com.acesoftph.offlinepasswordwallet.password.PasswordGenerator
 import com.acesoftph.offlinepasswordwallet.settings.AppSettings
+import com.acesoftph.offlinepasswordwallet.ui.components.ColoredPassword
+import com.acesoftph.offlinepasswordwallet.ui.components.SectionHeader
+import com.acesoftph.offlinepasswordwallet.ui.components.StrengthMeter
+import com.acesoftph.offlinepasswordwallet.ui.components.WalletCard
+import com.acesoftph.offlinepasswordwallet.ui.theme.LocalWalletPalette
+import com.acesoftph.offlinepasswordwallet.util.ClipboardUtil
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
  * Reusable generator UI (§10–§15). A fresh password is generated immediately on
- * first show and on every relevant change; "Generate Again" re-rolls. If [onUse]
- * is non-null an "Use this password" action is shown (embedded-in-edit mode).
+ * first show and on every relevant change; "Regenerate" re-rolls. If [onUse] is
+ * non-null a "Use this password" action is shown (embedded-in-edit mode).
  */
 @Composable
 fun GeneratorPanel(
     onUse: ((String) -> Unit)?,
     modifier: Modifier = Modifier,
+    onCopied: ((String) -> Unit)? = null,
 ) {
+    val palette = LocalWalletPalette.current
     val settings by ServiceLocator.settingsRepository.settings
         .collectAsStateWithLifecycle(initialValue = AppSettings())
 
@@ -60,7 +79,6 @@ fun GeneratorPanel(
         generated = PasswordGenerator.generate(length.roundToInt(), useSpecial)
     }
 
-    // Seed defaults from settings once, then generate immediately.
     LaunchedEffect(settings) {
         if (!initialized) {
             length = settings.defaultPasswordLength
@@ -71,75 +89,212 @@ fun GeneratorPanel(
         }
     }
 
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Card(Modifier.fillMaxWidth()) {
+    Column(modifier.fillMaxWidth()) {
+
+        // ---- the result -----------------------------------------------------
+        WalletCard {
+            Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                Text(
+                    "GENERATED PASSWORD",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                ColoredPassword(
+                    password = generated.ifEmpty { "…" },
+                    modifier = Modifier.padding(top = 10.dp).testTag("generated_password"),
+                )
+                StrengthMeter(generated, modifier = Modifier.padding(top = 14.dp))
+
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    FilledTonalButton(
+                        onClick = { regen() },
+                        modifier = Modifier.weight(1f).testTag("generate_again"),
+                    ) {
+                        Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text("  Regenerate")
+                    }
+                    Button(
+                        onClick = { onCopied?.invoke(generated) },
+                        enabled = onCopied != null && generated.isNotEmpty(),
+                        modifier = Modifier.weight(1f).testTag("copy_password"),
+                    ) {
+                        Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text("  Copy")
+                    }
+                }
+            }
+        }
+
+        // ---- length ---------------------------------------------------------
+        SectionHeader("Length") {
             Text(
-                text = generated.ifEmpty { "…" },
-                fontFamily = FontFamily.Monospace,
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(16.dp).testTag("generated_password"),
+                "${length.roundToInt()}",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = palette.accent,
             )
         }
-
-        Text("Password Length: ${length.roundToInt()}")
-        Slider(
-            value = length,
-            onValueChange = { length = it; regen() },
-            valueRange = PasswordGenerator.MIN_LENGTH.toFloat()..PasswordGenerator.MAX_LENGTH.toFloat(),
-            steps = PasswordGenerator.MAX_LENGTH - PasswordGenerator.MIN_LENGTH - 1,
-            modifier = Modifier.testTag("length_slider"),
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text("Use special characters")
-            Switch(
-                checked = useSpecial,
-                onCheckedChange = { useSpecial = it; regen() },
-                modifier = Modifier.testTag("special_switch"),
-            )
+        WalletCard {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
+                Slider(
+                    value = length,
+                    onValueChange = { length = it; regen() },
+                    valueRange = PasswordGenerator.MIN_LENGTH.toFloat()..PasswordGenerator.MAX_LENGTH.toFloat(),
+                    modifier = Modifier.testTag("length_slider"),
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    listOf(
+                        PasswordGenerator.MIN_LENGTH, 16, 32, 48, PasswordGenerator.MAX_LENGTH,
+                    ).forEach {
+                        Text(
+                            "$it",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
         }
-        Text(
-            "Allowed symbols: ${PasswordGenerator.SPECIAL}",
-            style = MaterialTheme.typography.bodySmall,
-        )
 
-        OutlinedButton(
-            onClick = { regen() },
-            modifier = Modifier.fillMaxWidth().testTag("generate_again"),
-        ) { Text("Generate Again") }
+        // ---- character set --------------------------------------------------
+        SectionHeader("Character set")
+        WalletCard {
+            Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                // Upper case, lower case and digits are always on: the generator
+                // guarantees at least one of each, so offering a switch that
+                // cannot be turned off would be a lie. They are shown as fixed.
+                AlwaysOnRow("A–Z", "Uppercase letters")
+                AlwaysOnRow("a–z", "Lowercase letters")
+                AlwaysOnRow("0–9", "Digits")
+                CharSetRow(
+                    code = "!@#",
+                    label = "Symbols",
+                    detail = PasswordGenerator.SPECIAL,
+                    checked = useSpecial,
+                    onCheckedChange = { useSpecial = it; regen() },
+                )
+            }
+        }
 
         if (onUse != null) {
             Button(
                 onClick = { onUse(generated) },
-                modifier = Modifier.fillMaxWidth().testTag("use_password"),
+                modifier = Modifier.fillMaxWidth().padding(top = 18.dp).testTag("use_password"),
             ) { Text("Use this password") }
         }
     }
 }
 
+@Composable
+private fun AlwaysOnRow(code: String, label: String) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(code, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(
+                label,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Filled.Check,
+                contentDescription = "Always included",
+                tint = LocalWalletPalette.current.accent,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(
+                "  Always",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CharSetRow(
+    code: String,
+    label: String,
+    detail: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(code, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                detail,
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            modifier = Modifier.testTag("special_switch"),
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PasswordGeneratorScreen(onBack: () -> Unit, onUse: ((String) -> Unit)?) {
+fun PasswordGeneratorScreen(
+    onBack: (() -> Unit)?,
+    onUse: ((String) -> Unit)?,
+    bottomBar: @Composable () -> Unit = {},
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbar = remember { SnackbarHostState() }
+    val settings by ServiceLocator.settingsRepository.settings
+        .collectAsStateWithLifecycle(initialValue = AppSettings())
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Password generator") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
                     }
                 },
             )
         },
+        snackbarHost = { SnackbarHost(snackbar) },
+        bottomBar = bottomBar,
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
-            GeneratorPanel(onUse = onUse)
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState()),
+        ) {
+            GeneratorPanel(
+                onUse = onUse,
+                onCopied = { pw ->
+                    ClipboardUtil.copy(context, "Password", pw, true, settings.clipboardClearSeconds)
+                    scope.launch {
+                        snackbar.showSnackbar(
+                            "Password copied. Clipboard clears in ${settings.clipboardClearSeconds}s.",
+                        )
+                    }
+                },
+            )
+            Text("", Modifier.padding(bottom = 24.dp))
         }
     }
 }

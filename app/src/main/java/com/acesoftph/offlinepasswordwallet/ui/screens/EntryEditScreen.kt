@@ -1,5 +1,6 @@
 package com.acesoftph.offlinepasswordwallet.ui.screens
 
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,7 +42,7 @@ import com.acesoftph.offlinepasswordwallet.data.repository.VaultState
 import com.acesoftph.offlinepasswordwallet.data.repository.toUserMessage
 import com.acesoftph.offlinepasswordwallet.di.ServiceLocator
 import com.acesoftph.offlinepasswordwallet.ui.components.PasswordField
-import com.acesoftph.offlinepasswordwallet.ui.components.StrengthBar
+import com.acesoftph.offlinepasswordwallet.ui.components.StrengthMeter
 import kotlinx.coroutines.launch
 
 /**
@@ -147,7 +148,7 @@ fun EntryEditScreen(
                             label = field.name.ifBlank { "Value" },
                             modifier = Modifier.testTag("field_${field.name}"),
                         )
-                        StrengthBar(field.value)
+                        StrengthMeter(field.value)
                         OutlinedButton(
                             onClick = { showGenerator = true },
                             modifier = Modifier.testTag("open_generator"),

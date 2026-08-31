@@ -2,6 +2,7 @@ package com.acesoftph.offlinepasswordwallet.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -46,7 +47,7 @@ import com.acesoftph.offlinepasswordwallet.data.repository.toUserMessage
 import com.acesoftph.offlinepasswordwallet.di.ServiceLocator
 import com.acesoftph.offlinepasswordwallet.password.PasswordStrength
 import com.acesoftph.offlinepasswordwallet.ui.components.PasswordField
-import com.acesoftph.offlinepasswordwallet.ui.components.StrengthBar
+import com.acesoftph.offlinepasswordwallet.ui.components.StrengthMeter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -143,7 +144,7 @@ fun ExportBackupScreen(onBack: () -> Unit) {
                 label = "Backup passphrase",
                 modifier = Modifier.testTag("backup_passphrase"),
             )
-            StrengthBar(passphrase)
+            StrengthMeter(passphrase)
             policyError?.let {
                 Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
@@ -377,7 +378,7 @@ fun RestoreBackupScreen(onDone: () -> Unit, onCancel: () -> Unit) {
                         label = "New master password",
                         modifier = Modifier.testTag("restore_new_master"),
                     )
-                    StrengthBar(newMaster)
+                    StrengthMeter(newMaster)
                     policyError?.let {
                         Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
@@ -393,6 +394,7 @@ fun RestoreBackupScreen(onDone: () -> Unit, onCancel: () -> Unit) {
                             onValueChange = { answers[index] = it; message = null },
                             label = { Text("${index + 1}. $q") },
                             singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.fillMaxWidth().testTag("restore_answer_$index"),
                         )
                     }

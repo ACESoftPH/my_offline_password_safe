@@ -4,23 +4,23 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -35,12 +35,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.acesoftph.offlinepasswordwallet.data.model.VaultEntry
 import com.acesoftph.offlinepasswordwallet.data.repository.VaultState
 import com.acesoftph.offlinepasswordwallet.di.ServiceLocator
+import com.acesoftph.offlinepasswordwallet.ui.components.EntryAvatar
+import com.acesoftph.offlinepasswordwallet.ui.components.SectionHeader
+import com.acesoftph.offlinepasswordwallet.ui.components.WalletCard
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,122 +52,158 @@ import kotlinx.coroutines.launch
 fun VaultListScreen(
     onOpenEntry: (String) -> Unit,
     onAddEntry: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onOpenGenerator: () -> Unit,
-    onImport: () -> Unit,
-    onExport: () -> Unit,
-    onExportBackup: () -> Unit,
-    onRestoreBackup: () -> Unit,
+    bottomBar: @Composable () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val state by ServiceLocator.vaultRepository.state.collectAsStateWithLifecycle()
     val entries = (state as? VaultState.Unlocked)?.entries ?: emptyList()
 
     var query by remember { mutableStateOf("") }
-    var menuOpen by remember { mutableStateOf(false) }
-
     val filtered = remember(entries, query) { filterEntries(entries, query) }
+    val grouped = remember(filtered) { groupByInitial(filtered) }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Wallet") },
                 actions = {
-                    IconButton(onClick = {
-                        scope.launch { ServiceLocator.vaultRepository.lock() }
-                    }) {
+                    IconButton(
+                        onClick = { scope.launch { ServiceLocator.vaultRepository.lock() } },
+                    ) {
                         Icon(Icons.Filled.Lock, contentDescription = "Lock now")
-                    }
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = "More")
-                    }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        DropdownMenuItem(
-                            text = { Text("Password generator") },
-                            onClick = { menuOpen = false; onOpenGenerator() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Import / Export → Import CSV") },
-                            onClick = { menuOpen = false; onImport() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Import / Export → Export CSV") },
-                            onClick = { menuOpen = false; onExport() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Import / Export → Export encrypted backup") },
-                            onClick = { menuOpen = false; onExportBackup() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Import / Export → Restore from encrypted backup") },
-                            onClick = { menuOpen = false; onRestoreBackup() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Settings") },
-                            onClick = { menuOpen = false; onOpenSettings() },
-                        )
                     }
                 },
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
+            ExtendedFloatingActionButton(
                 onClick = onAddEntry,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.testTag("add_entry_fab"),
-            ) { Icon(Icons.Filled.Add, contentDescription = "Add entry") }
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null)
+                Text("  Add entry", fontWeight = FontWeight.SemiBold)
+            }
         },
+        bottomBar = bottomBar,
     ) { padding ->
         Column(
-            modifier = Modifier
+            Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = 16.dp),
         ) {
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                label = { Text("Search title, category, username, website, custom fields") },
+                placeholder = { Text("Search") },
                 singleLine = true,
+                shape = RoundedCornerShape(999.dp),
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                modifier = Modifier.fillMaxWidth().testTag("search_field"),
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp).testTag("search_field"),
             )
+
+            if (entries.isNotEmpty()) {
+                Text(
+                    text = if (query.isBlank()) {
+                        "${entries.size} ${if (entries.size == 1) "entry" else "entries"}"
+                    } else {
+                        "${filtered.size} of ${entries.size} shown"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+            }
 
             if (filtered.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        if (entries.isEmpty()) "No entries yet. Tap + to add one." else "No matches.",
+                        if (entries.isEmpty()) {
+                            "No entries yet.\nTap “Add entry” to create one."
+                        } else {
+                            "Nothing matches “$query”."
+                        },
                         style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     )
                 }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().testTag("entry_list"),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 120.dp),
                 ) {
-                    items(filtered, key = { it.id }) { entry ->
-                        ListItem(
-                            headlineContent = {
-                                Text(
-                                    entry.displayTitle(),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            },
-                            supportingContent = entry.displaySubtitle()?.let { sub ->
-                                { Text(sub, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onOpenEntry(entry.id) }
-                                .testTag("entry_row_${entry.displayTitle()}"),
-                        )
+                    grouped.forEach { (initial, group) ->
+                        item(key = "hdr_$initial") { SectionHeader(initial) }
+                        items(group, key = { it.id }) { entry ->
+                            EntryRow(entry = entry, onClick = { onOpenEntry(entry.id) })
+                        }
                     }
                 }
             }
         }
     }
 }
+
+@Composable
+private fun EntryRow(entry: VaultEntry, onClick: () -> Unit) {
+    val title = entry.displayTitle()
+    WalletCard(
+        onClick = onClick,
+        modifier = Modifier.testTag("entry_row_$title"),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            EntryAvatar(title)
+            Column(Modifier.weight(1f)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                entry.displaySubtitle()?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+/**
+ * Groups entries under their first character for the sectioned list. Purely
+ * presentational — nothing about the stored data changes. Anything not starting
+ * with a letter collects under "#".
+ */
+internal fun groupByInitial(entries: List<VaultEntry>): List<Pair<String, List<VaultEntry>>> =
+    entries
+        .sortedBy { it.displayTitle().lowercase() }
+        .groupBy { entry ->
+            val c = entry.displayTitle().trim().firstOrNull()
+            if (c != null && c.isLetter()) c.uppercase() else "#"
+        }
+        .toList()
+        .sortedBy { (key, _) -> if (key == "#") "zzz" else key }
 
 /**
  * Filters on NON-SENSITIVE data only: every field name, plus the values of

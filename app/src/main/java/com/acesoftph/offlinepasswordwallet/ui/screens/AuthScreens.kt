@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -40,8 +39,10 @@ import com.acesoftph.offlinepasswordwallet.security.BiometricAuthenticator
 import com.acesoftph.offlinepasswordwallet.security.BiometricNotConfiguredException
 import com.acesoftph.offlinepasswordwallet.security.RecoveryResult
 import com.acesoftph.offlinepasswordwallet.settings.AppSettings
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.acesoftph.offlinepasswordwallet.ui.components.PasswordField
-import com.acesoftph.offlinepasswordwallet.ui.components.StrengthBar
+import com.acesoftph.offlinepasswordwallet.ui.components.WalletCard
+import com.acesoftph.offlinepasswordwallet.ui.components.StrengthMeter
 import kotlinx.coroutines.launch
 
 /* --------------------------------------------------------------------------- */
@@ -74,7 +75,7 @@ fun SetupScreen(onRestoreBackup: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (step == 0) {
-                Card(Modifier.fillMaxWidth()) {
+                WalletCard {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Create a master password", style = MaterialTheme.typography.titleMedium)
                         Text(
@@ -91,7 +92,7 @@ fun SetupScreen(onRestoreBackup: () -> Unit) {
                     label = "Master password",
                     modifier = Modifier.testTag("master_password"),
                 )
-                StrengthBar(password)
+                StrengthMeter(password)
                 if (policyError != null) {
                     Text(
                         policyError,
@@ -122,7 +123,7 @@ fun SetupScreen(onRestoreBackup: () -> Unit) {
                     modifier = Modifier.fillMaxWidth().testTag("setup_restore_backup"),
                 ) { Text("Restore from an encrypted backup instead") }
             } else {
-                Card(Modifier.fillMaxWidth()) {
+                WalletCard {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Five security questions", style = MaterialTheme.typography.titleMedium)
                         Text(
@@ -141,6 +142,7 @@ fun SetupScreen(onRestoreBackup: () -> Unit) {
                         onValueChange = { answers[index] = it; error = null },
                         label = { Text("${index + 1}. $question") },
                         singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.fillMaxWidth().testTag("answer_$index"),
                     )
                 }
@@ -359,6 +361,7 @@ fun RecoveryScreen(onDone: () -> Unit, onCancel: () -> Unit) {
                         onValueChange = { answers[index] = it; message = null },
                         label = { Text("${index + 1}. $question") },
                         singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.fillMaxWidth().testTag("recovery_answer_$index"),
                     )
                 }
@@ -405,7 +408,7 @@ fun RecoveryScreen(onDone: () -> Unit, onCancel: () -> Unit) {
                     label = "New master password",
                     modifier = Modifier.testTag("recovery_new_password"),
                 )
-                StrengthBar(newPassword)
+                StrengthMeter(newPassword)
                 policyError?.let {
                     Text(
                         it,
