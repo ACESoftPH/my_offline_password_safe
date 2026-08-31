@@ -116,15 +116,22 @@ manifest declares only `USE_BIOMETRIC` and `USE_FINGERPRINT`, both from
 `androidx.biometric`, and biometric matching is performed by Android — the app
 never receives biometric data.
 
-**Privacy policy URL** (Play requires one even for apps that collect nothing):
+## URLs and contact for the Play Console
 
-```
-https://aldinson.github.io/my_offline_password_safe/
-```
+| Play Console field | Value |
+|---|---|
+| Privacy policy | `https://aldinson.github.io/my_offline_password_safe/` |
+| Support website (optional) | `https://aldinson.github.io/my_offline_password_safe/support.html` |
+| Support email (required, shown publicly) | `offlinepasswordwallet@gmail.com` |
 
-Source: `docs/index.html`, served by GitHub Pages from `main` / `docs`. The page
-is self-contained — no fonts, CDNs, scripts or trackers — so it does not
-contradict its own contents.
+Both pages live in `docs/` and are served by GitHub Pages from `main` / `docs`.
+They are self-contained — no fonts, CDNs, scripts or trackers — so the privacy
+policy does not contradict its own contents.
+
+> **Register `offlinepasswordwallet@gmail.com` before you publish.** It is
+> referenced by the support page, the privacy policy and the Play listing. If you
+> use a different address, change it in `docs/support.html`, `docs/index.html`
+> and this file.
 
 ## Regenerating
 

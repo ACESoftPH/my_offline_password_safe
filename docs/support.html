@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support — Offline Password Wallet</title>
+<meta name="description" content="Support, troubleshooting and contact details for the Offline Password Wallet Android app.">
+<!--
+  Self-contained by design, like the privacy policy: no web fonts, no CDN, no
+  analytics, no third-party requests of any kind.
+-->
+<style>
+  :root{
+    --bg:#fbfdf7; --surface:#ffffff; --text:#15211a; --muted:#4d6357;
+    --line:#dbe5dd; --accent:#1b4332; --accent-soft:#e8f3ec; --warn:#8a4b00;
+    --warn-soft:#fff4e5; --warn-line:#e8c99a;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#101512; --surface:#171f1a; --text:#e6ede8; --muted:#a2b5aa;
+      --line:#26332c; --accent:#7bdb89; --accent-soft:#16241b; --warn:#f0b46b;
+      --warn-soft:#2a1f10; --warn-line:#4a3820;
+    }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:0 20px 96px;
+    background:var(--bg); color:var(--text);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:760px; margin:0 auto}
+  header{padding:56px 0 8px; border-bottom:1px solid var(--line); margin-bottom:8px}
+  .badge{
+    display:inline-block; font-size:12px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--accent); background:var(--accent-soft); border-radius:999px;
+    padding:5px 12px; font-weight:600; margin-bottom:16px;
+  }
+  h1{font-size:clamp(28px,5vw,38px); line-height:1.2; margin:0 0 10px; letter-spacing:-.02em}
+  h2{font-size:22px; margin:44px 0 6px; letter-spacing:-.01em; padding-top:8px}
+  h3{font-size:17px; margin:26px 0 6px}
+  .meta{color:var(--muted); font-size:14px; margin:0}
+  nav{margin:18px 0 0; font-size:14px}
+  nav a{margin-right:18px}
+  a{color:var(--accent)}
+  ul{padding-left:22px} li{margin:6px 0}
+  code{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.9em;
+    background:var(--accent-soft); padding:1px 5px; border-radius:4px;
+  }
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--accent);
+    border-radius:10px; padding:18px 20px; margin:24px 0;
+  }
+  .card p{margin:0} .card p + p{margin-top:8px}
+  .warn{
+    background:var(--warn-soft); border:1px solid var(--warn-line); border-left:4px solid var(--warn);
+    border-radius:10px; padding:16px 20px; margin:24px 0;
+  }
+  .warn p{margin:0} .warn strong{color:var(--warn)}
+  .mail{font-size:19px; font-weight:600; word-break:break-all}
+  table{border-collapse:collapse; width:100%; margin:14px 0; font-size:15px; display:block; overflow-x:auto}
+  th,td{border:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+  th{background:var(--accent-soft); font-weight:600; white-space:nowrap}
+  footer{margin-top:56px; padding-top:24px; border-top:1px solid var(--line); color:var(--muted); font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="badge">Support</div>
+  <h1>Offline Password Wallet</h1>
+  <p class="meta">Android 8.0 and later · Version 1.0.0</p>
+  <nav>
+    <a href="./">Privacy policy</a>
+    <a href="https://github.com/aldinson/my_offline_password_safe">Source code</a>
+    <a href="https://github.com/aldinson/my_offline_password_safe/issues">Report a bug</a>
+  </nav>
+</header>
+
+<h2>Contact</h2>
+<div class="card">
+  <p class="mail"><a href="mailto:offlinepasswordwallet@gmail.com">offlinepasswordwallet@gmail.com</a></p>
+  <p>
+    This is a small independent app maintained by one person, so please allow a
+    few days for a reply. Bug reports and feature requests are better raised on
+    <a href="https://github.com/aldinson/my_offline_password_safe/issues">the public issue tracker</a>,
+    where they are visible and can be tracked.
+  </p>
+</div>
+
+<div class="warn">
+  <p>
+    <strong>Never send us a password, your master password, a security-question
+    answer, your vault file, or a CSV export.</strong> We do not need them, we
+    cannot use them, and email is not a safe place for them. If a support request
+    seems to require one, it doesn't — tell us what happened instead.
+  </p>
+</div>
+
+<h2>Before you write in</h2>
+<p>
+  Most questions we receive are covered below. The app stores everything only on
+  your own device, which is what makes it private — and also what makes a few of
+  these answers blunter than you might expect.
+</p>
+
+<h3>I forgot my master password</h3>
+<p>
+  On the unlock screen, tap <em>Forgot master password? Reset it</em> and answer
+  all five security questions. If they match, you set a <strong>new</strong>
+  master password and all of your entries are preserved.
+</p>
+<p>
+  The app cannot show you your old master password. It never stored it — only a
+  key derived from it — so there is nothing to look up. That is deliberate: a
+  password manager that can recover your master password can also be compelled
+  or breached into revealing it.
+</p>
+<p>
+  Wrong answers are deliberately rate-limited. After four failed attempts the
+  waiting period grows: 30 seconds, then 2 minutes, 10 minutes, 30 minutes, and
+  finally an hour between tries.
+</p>
+
+<h3>I forgot my master password AND my security answers</h3>
+<p>
+  Then the data cannot be recovered — not by you, not by us, not by anyone. There
+  is no copy on a server, no backdoor, and no reset link, because there is no
+  server. If you have an encrypted backup file and remember its passphrase, use
+  <em>Restore from an encrypted backup</em> on the unlock screen. Otherwise the
+  vault is lost. We are sorry; this is the direct cost of the app holding nothing
+  about you.
+</p>
+
+<h3>I'm moving to a new phone</h3>
+<p>
+  Android's cloud backup is switched off for this app on purpose, so your vault
+  does <strong>not</strong> transfer automatically. Move it yourself:
+</p>
+<ul>
+  <li>On the old phone: <em>Menu → Import / Export → Export encrypted backup</em>. Choose a passphrase and save the <code>.opwbackup</code> file somewhere you can reach from the new phone.</li>
+  <li>On the new phone: install the app, then on the first screen tap <em>Restore from an encrypted backup instead</em>, pick the file and enter the passphrase.</li>
+  <li>You will choose a new master password and new security answers as part of the restore.</li>
+</ul>
+<p>
+  Biometric unlock does not transfer — it is tied to the hardware key store of
+  the original device. Turn it back on in Settings after restoring.
+</p>
+
+<h3>I uninstalled the app and lost everything</h3>
+<p>
+  Uninstalling deletes the encrypted vault along with the app, and nothing else
+  holds a copy. If you have an encrypted backup, restore it as above. If not, the
+  data is gone. Take a backup before uninstalling, changing phones, or resetting
+  a device.
+</p>
+
+<h3>Biometric unlock suddenly stopped working</h3>
+<p>
+  This is expected after certain changes and is a security feature, not a fault.
+  Android permanently invalidates the app's biometric key when you add or remove
+  a fingerprint or face, or change your device's screen lock. The app detects
+  this, turns biometric login off, and asks for your master password instead.
+  Unlock with the master password, then re-enable it in
+  <em>Settings → Security → Biometric login</em>.
+</p>
+
+<h3>Screenshots come out black, or screen recording shows nothing</h3>
+<p>
+  That is intentional. <em>Block screenshots / screen recording</em> is on by
+  default so your passwords cannot be captured by other software or appear in the
+  app-switcher preview. You can turn it off in <em>Settings → Security</em> if you
+  need to capture the screen.
+</p>
+
+<h3>Importing from another password manager</h3>
+<p>
+  Use <em>Menu → Import / Export → Import CSV</em>. The importer expects a
+  <strong>semicolon-delimited</strong> CSV whose first row is the column names:
+</p>
+<p><code>Title;Category;Username;Password;Website;Comments</code></p>
+<ul>
+  <li>Any extra columns become custom fields automatically — <code>PIN</code>, <code>Account Number</code>, anything you like.</li>
+  <li>Quoted fields, semicolons and line breaks inside quotes, and non-English characters are all handled.</li>
+  <li>You will see how many entries and fields were found, and choose whether to add them to your vault or replace it, before anything is written.</li>
+</ul>
+<p>
+  If your other manager exports comma-delimited CSV, open it in a spreadsheet and
+  re-save it with semicolons.
+</p>
+
+<h3>Is the CSV export safe to keep?</h3>
+<p>
+  No. <strong>CSV export is plain text</strong> — that is what makes it readable
+  by other programs. Anyone who gets the file can read every password in it. Use
+  it only to move between managers, and delete it as soon as you are done. For
+  keeping a copy, use the encrypted backup instead.
+</p>
+
+<h3>The app locks itself too quickly, or not quickly enough</h3>
+<p>
+  <em>Settings → Security → Auto-lock timeout</em>: 30 seconds, 1, 2, 5 (default),
+  10 or 30 minutes, or Never. The vault also locks when you leave the app for
+  longer than that period.
+</p>
+
+<h3>I copied a password and it disappeared from the clipboard</h3>
+<p>
+  Copied passwords are cleared automatically after 30 seconds by default, so they
+  don't sit in the clipboard for other apps to read. Adjust the delay with the
+  <em>Clipboard auto-clear</em> slider in <em>Settings → Security</em>.
+</p>
+
+<h3>What makes a password acceptable as a master password?</h3>
+<p>
+  At least 10 characters and at least three different kinds of character (lower
+  case, upper case, digits, symbols). There is no maximum length — a long
+  passphrase is a good choice. The strength meter is guidance only.
+</p>
+
+<h3>Does it sync between my devices?</h3>
+<p>
+  No, and it never will. The app has no network permission at all. Moving data
+  between devices is done with the encrypted backup file, by you.
+</p>
+
+<h3>Is there an iPhone version?</h3>
+<p>No. This is an Android app only.</p>
+
+<h2>Reporting a bug</h2>
+<p>
+  Please open an issue on
+  <a href="https://github.com/aldinson/my_offline_password_safe/issues">GitHub</a>
+  and include:
+</p>
+<table>
+  <tr><th>Include</th><th>Do not include</th></tr>
+  <tr>
+    <td>
+      Android version and phone model<br>
+      App version (Settings, bottom of the screen)<br>
+      What you did, what you expected, what happened<br>
+      The exact wording of any error message
+    </td>
+    <td>
+      Passwords or your master password<br>
+      Security-question answers<br>
+      Your vault file or a CSV export<br>
+      Screenshots that show real credentials
+    </td>
+  </tr>
+</table>
+
+<h2>Reporting a security issue</h2>
+<p>
+  If you believe you have found a vulnerability, please email
+  <a href="mailto:offlinepasswordwallet@gmail.com">offlinepasswordwallet@gmail.com</a>
+  rather than opening a public issue, and give us a reasonable opportunity to fix
+  it before disclosing it publicly. Include enough detail to reproduce the
+  problem. The app's threat model and its known limitations are documented in the
+  <a href="https://github.com/aldinson/my_offline_password_safe#readme">project README</a>
+  — please check there first, since some behaviour that looks like a weakness is a
+  documented trade-off.
+</p>
+
+<footer>
+  Offline Password Wallet · Support ·
+  <a href="./">Privacy policy</a> ·
+  <a href="https://github.com/aldinson/my_offline_password_safe">Source</a><br>
+  This page loads no external resources and sets no cookies.
+</footer>
+
+</div>
+</body>
+</html>
