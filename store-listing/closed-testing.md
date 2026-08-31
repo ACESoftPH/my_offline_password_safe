@@ -26,7 +26,7 @@ to run a closed test before they can apply for production access: at least
 - [ ] Store listing complete — icon, feature graphic, screenshots, descriptions (`README.md`)
 - [ ] Content rating questionnaire submitted (`content-rating.md`)
 - [ ] Data safety form submitted — no data collected, no data shared
-- [ ] Privacy policy URL set to `https://aldinson.github.io/my_offline_password_safe/`
+- [ ] Privacy policy URL set to `https://acesoftph.github.io/my_offline_password_safe/`
 - [ ] Target audience set to an adult band (18+, or 13+ at youngest)
 - [ ] `OfflinePasswordWallet-1.0.0.aab` built and signed
 - [ ] **12–15 real people** who have agreed in advance to take part

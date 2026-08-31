@@ -78,7 +78,7 @@ Because your data is only ever on your phone, nobody can recover it for you — 
 
 No password manager can protect you if your device itself is compromised, if malware is running with enough privileges, if you export a plaintext CSV and then expose it, if your master password is weak, or if someone guesses your security answers. The full security model, including its limitations, is documented in the source repository.
 
-Open source: https://github.com/aldinson/my_offline_password_safe
+Open source: https://github.com/ACESoftPH/my_offline_password_safe
 ```
 
 ---

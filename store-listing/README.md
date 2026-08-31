@@ -66,8 +66,8 @@ never receives biometric data.
 
 | Play Console field | Value |
 |---|---|
-| Privacy policy | `https://aldinson.github.io/my_offline_password_safe/` |
-| Support website (optional) | `https://aldinson.github.io/my_offline_password_safe/support.html` |
+| Privacy policy | `https://acesoftph.github.io/my_offline_password_safe/` |
+| Support website (optional) | `https://acesoftph.github.io/my_offline_password_safe/support.html` |
 | Support email (required, shown publicly) | `walletp85@gmail.com` |
 
 Both pages live in `docs/` and are served by GitHub Pages from `main` / `docs`.

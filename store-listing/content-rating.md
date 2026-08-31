@@ -125,7 +125,7 @@ the answers follow from the same facts:
 | **Government app** | No |
 | **Financial features** | **None.** The app stores credentials; it does not provide banking, lending, payments, or crypto functionality. |
 | **Health apps** | No |
-| **Privacy policy URL** | `https://aldinson.github.io/my_offline_password_safe/` |
+| **Privacy policy URL** | `https://acesoftph.github.io/my_offline_password_safe/` |
 
 ### On target audience
 
