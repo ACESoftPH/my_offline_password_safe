@@ -116,8 +116,15 @@ manifest declares only `USE_BIOMETRIC` and `USE_FINGERPRINT`, both from
 `androidx.biometric`, and biometric matching is performed by Android — the app
 never receives biometric data.
 
-You will still need a **privacy policy URL**; Play requires one even for apps
-that collect nothing.
+**Privacy policy URL** (Play requires one even for apps that collect nothing):
+
+```
+https://aldinson.github.io/my_offline_password_safe/
+```
+
+Source: `docs/index.html`, served by GitHub Pages from `main` / `docs`. The page
+is self-contained — no fonts, CDNs, scripts or trackers — so it does not
+contradict its own contents.
 
 ## Regenerating
 
