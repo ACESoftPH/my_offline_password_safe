@@ -22,3 +22,7 @@ local.properties
 # Built APKs are release artifacts, not source.
 *.apk
 *.aab
+
+# Python bytecode from the store-listing generator
+__pycache__/
+*.pyc
