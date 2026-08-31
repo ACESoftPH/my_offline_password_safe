@@ -108,6 +108,11 @@ including the developer — to recover it for you. Take an encrypted backup.
 Open source: https://github.com/aldinson/my_offline_password_safe
 ```
 
+## Content rating
+
+See **[content-rating.md](content-rating.md)** for every questionnaire answer,
+the expected ratings, and the target-audience choice.
+
 ## Data safety form
 
 The answer to every collection question is **no**. The app collects nothing,
