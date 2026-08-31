@@ -10,5 +10,14 @@
 local.properties
 /app/build/
 /build/
+
+# Release signing material — never commit these. keystore.properties holds the
+# store/key passwords; release.jks is the signing key itself. Losing the key
+# means you can no longer ship an update that upgrades an installed app.
 *.keystore
 *.jks
+/keystore/
+/keystore.properties
+
+# Built APKs are release artifacts, not source.
+*.apk

@@ -1,14 +1,36 @@
+<!--
+  Offline Password Wallet launcher icon (foreground layer).
+
+  A wallet (rounded body with a flap seam) carrying a small vault door — a dial
+  with four spokes and a keyhole — and a padlock badge on the corner.
+
+  Authored as a single evenOdd path so every interior detail is a real hole. That
+  keeps the icon correct on any launcher background and keeps the <monochrome>
+  themed-icon silhouette legible instead of collapsing it to a solid blob.
+
+  Drawn in the 108x108 adaptive-icon viewport; all artwork stays inside the
+  guaranteed-visible safe zone (a circle of radius 33 centred on 54,54).
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group android:scaleX="2.4"
-        android:scaleY="2.4"
-        android:translateX="30.6"
-        android:translateY="30.6">
-        <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M12,1L3,5v6c0,5.55 3.84,10.74 9,12 5.16,-1.26 9,-6.45 9,-12V5L12,1zM12,11.99h7c-0.53,4.12 -3.28,7.79 -7,8.94V12H5V6.3l7,-3.11v8.8z" />
-    </group>
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M33,34 L73,34 A8,8 0 0 1 81,42 L81,65 A8,8 0 0 1 73,73 L33,73 A8,8 0 0 1 25,65 L25,42 A8,8 0 0 1 33,34 Z
+        M25,42 L81,42 L81,44.8 L25,44.8 Z
+        M37,58.5 A12,12 0 1 0 61,58.5 A12,12 0 1 0 37,58.5 Z
+        M40.5,58.5 A8.5,8.5 0 1 0 57.5,58.5 A8.5,8.5 0 1 0 40.5,58.5 Z
+        M45.77,56.97 A3.23,3.23 0 1 0 52.23,56.97 A3.23,3.23 0 1 0 45.77,56.97 Z
+        M46.48,56.97 L51.52,56.97 L50.62,64.28 L47.38,64.28 Z
+        M47.3,46.5 L50.7,46.5 L50.7,50.3 L47.3,50.3 Z
+        M47.3,66.7 L50.7,66.7 L50.7,70.5 L47.3,70.5 Z
+        M37,56.8 L40.8,56.8 L40.8,60.2 L37,60.2 Z
+        M57.2,56.8 L61,56.8 L61,60.2 L57.2,60.2 Z
+        M63.36,68.08 A8.64,8.64 0 1 0 80.64,68.08 A8.64,8.64 0 1 0 63.36,68.08 Z
+        M68.04,66.1 A3.96,3.96 0 0 1 75.96,66.1 Z
+        M69.57,66.1 A2.43,2.43 0 0 1 74.43,66.1 Z
+        M69.3,66.1 L74.7,66.1 A1.53,1.53 0 0 1 76.23,67.63 L76.23,71.05 A1.53,1.53 0 0 1 74.7,72.58 L69.3,72.58 A1.53,1.53 0 0 1 67.77,71.05 L67.77,67.63 A1.53,1.53 0 0 1 69.3,66.1 Z" />
 </vector>

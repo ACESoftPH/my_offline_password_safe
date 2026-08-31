@@ -1,4 +1,5 @@
 <resources>
     <color name="window_background">#FFFBFE</color>
-    <color name="ic_launcher_background">#1B4332</color>
+    <!-- Brand green; the launcher icon background gradient is built from this. -->
+    <color name="brand_green">#1B4332</color>
 </resources>
