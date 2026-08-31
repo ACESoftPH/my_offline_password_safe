@@ -69,7 +69,7 @@ publish another update.
 
 ### Play requirements this build already satisfies
 
-- `applicationId` is `com.acesoft.offlinepasswordwallet` (Play rejects
+- `applicationId` is `com.acesoftph.offlinepasswordwallet` (Play rejects
   `com.example.*`).
 - `targetSdk 35`, meeting Play's current target-API requirement.
 - **16 KB page size**: the two bundled native libraries
@@ -85,7 +85,7 @@ publish another update.
 ## 2. Application architecture
 
 ```
-com.acesoft.offlinepasswordwallet
+com.acesoftph.offlinepasswordwallet
 ├── crypto/            VaultCrypto, SecureRandomProvider, SecurityAnswers,
 │                      CryptoConstants, EncryptedBlob, Base64Util, errors
 ├── data/
