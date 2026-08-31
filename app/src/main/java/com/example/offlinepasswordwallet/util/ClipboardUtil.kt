@@ -28,7 +28,18 @@ import android.os.PersistableBundle
 object ClipboardUtil {
 
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    @Volatile
     private var pendingClear: Runnable? = null
+
+    /**
+     * True while a timed clear is outstanding. Once the app has promised the user
+     * "the clipboard will be cleared", a following *non-sensitive* copy must not
+     * silently drop that promise — whatever we put on the clipboard next is still
+     * cleared on schedule.
+     */
+    @Volatile
+    private var clearPromised: Boolean = false
 
     fun copy(
         context: Context,
@@ -51,27 +62,41 @@ object ClipboardUtil {
         }
         cm.setPrimaryClip(clip)
 
+        val hadPromise = clearPromised
         pendingClear?.let { mainHandler.removeCallbacks(it) }
         pendingClear = null
 
-        if (sensitive && clearAfterSeconds > 0) {
+        // Schedule a clear when this value is sensitive, and also when a clear was
+        // already promised for the value we just overwrote — otherwise copying a
+        // username right after a password would cancel the pending wipe and leave
+        // the clipboard populated indefinitely.
+        if ((sensitive || hadPromise) && clearAfterSeconds > 0) {
             val expected = value
-            val task = Runnable { clearIfUnchanged(cm, expected) }
+            lateinit var task: Runnable
+            task = Runnable { clearIfUnchanged(cm, expected, task) }
             pendingClear = task
+            clearPromised = true
             mainHandler.postDelayed(task, clearAfterSeconds * 1000L)
+        } else {
+            clearPromised = false
         }
     }
 
-    private fun clearIfUnchanged(cm: ClipboardManager, expected: String) {
+    private fun clearIfUnchanged(cm: ClipboardManager, expected: String, self: Runnable) {
+        // Only retire the promise if THIS task is still the current one; a newer
+        // copy may have replaced it between posting and running.
+        if (pendingClear !== self) return
         val current = runCatching { cm.primaryClip?.getItemAt(0)?.text?.toString() }.getOrNull()
-        if (current != null && current != expected) return
-        runCatching {
-            if (Build.VERSION.SDK_INT >= 28) {
-                cm.clearPrimaryClip()
-            } else {
-                cm.setPrimaryClip(ClipData.newPlainText("", " "))
+        if (current == null || current == expected) {
+            runCatching {
+                if (Build.VERSION.SDK_INT >= 28) {
+                    cm.clearPrimaryClip()
+                } else {
+                    cm.setPrimaryClip(ClipData.newPlainText("", " "))
+                }
             }
         }
         pendingClear = null
+        clearPromised = false
     }
 }

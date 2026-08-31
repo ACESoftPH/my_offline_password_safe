@@ -24,9 +24,12 @@ object CsvExporter {
         }.toList()
 
         val rows = ArrayList<List<String>>(entries.size + 1)
-        rows.add(columns)
+        rows.add(columns.map { Csv.escapeFormula(it) })
         for (entry in entries) {
-            rows.add(columns.map { name -> entry.value(name) ?: "" })
+            // Values are neutralized against spreadsheet formula injection: a value
+            // starting with = + - @ TAB or CR would otherwise be executed when the
+            // export is opened in Excel/Sheets. CsvImporter reverses this.
+            rows.add(columns.map { name -> Csv.escapeFormula(entry.value(name) ?: "") })
         }
         return Csv.write(rows, delimiter)
     }

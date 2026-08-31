@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.offlinepasswordwallet.BuildConfig
 import com.example.offlinepasswordwallet.data.backup.BackupManager
 import com.example.offlinepasswordwallet.data.repository.VaultRepository
+import com.example.offlinepasswordwallet.data.repository.VaultState
 import com.example.offlinepasswordwallet.data.storage.VaultFileStore
 import com.example.offlinepasswordwallet.security.AppLockManager
 import com.example.offlinepasswordwallet.security.KeyManager
@@ -13,7 +14,11 @@ import com.example.offlinepasswordwallet.security.RecoveryRateLimiter
 import com.example.offlinepasswordwallet.settings.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 /**
  * Manual dependency wiring. No Hilt/Dagger: for a small security-sensitive app,
@@ -59,6 +64,34 @@ object ServiceLocator {
             settings = settingsRepository.settings,
             onLock = { vaultRepository.lock() },
         )
+
+        bindAutoLock(applicationScope, vaultRepository, appLockManager)
+
         initialized = true
+    }
+
+    /**
+     * Drives the auto-lock timer from the vault's own lock state.
+     *
+     * Without this bridge [AppLockManager] is never told that the vault was
+     * unlocked: its internal `unlocked` flag stays false, `onUserInteraction()`
+     * no-ops, the inactivity monitor exits immediately and the return-from-
+     * background check is skipped — i.e. the entire Auto-Lock setting is inert and
+     * a decrypted vault stays in memory indefinitely.
+     *
+     * Extracted from [init] so the contract can be asserted in tests without
+     * depending on process-wide singleton state.
+     */
+    fun bindAutoLock(
+        scope: CoroutineScope,
+        repository: VaultRepository,
+        lockManager: AppLockManager,
+    ): Job = scope.launch {
+        repository.state
+            .map { it is VaultState.Unlocked }
+            .distinctUntilChanged()
+            .collect { unlocked ->
+                if (unlocked) lockManager.onUnlocked() else lockManager.onLocked()
+            }
     }
 }

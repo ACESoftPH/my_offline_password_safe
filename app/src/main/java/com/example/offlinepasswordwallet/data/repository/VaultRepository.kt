@@ -8,11 +8,15 @@ import com.example.offlinepasswordwallet.data.model.VaultDocument
 import com.example.offlinepasswordwallet.data.model.VaultEntry
 import com.example.offlinepasswordwallet.data.storage.VaultCodec
 import com.example.offlinepasswordwallet.data.storage.VaultFileStore
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import java.util.UUID
 import javax.crypto.SecretKey
 
 sealed interface VaultState {
@@ -41,6 +45,14 @@ sealed interface VaultState {
 class VaultRepository(
     private val store: VaultFileStore,
     private val codec: VaultCodec = VaultCodec(),
+    /**
+     * Where the expensive work runs. Every public operation below performs a
+     * 600,000-iteration PBKDF2 and/or an fsync'd file write; all UI call sites use
+     * `rememberCoroutineScope()`, which is the Main dispatcher, so without this
+     * hop the work would freeze the frame for hundreds of milliseconds to several
+     * seconds (an ANR on mid-range devices).
+     */
+    private val cryptoDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     private val mutex = Mutex()
 
@@ -69,8 +81,8 @@ class VaultRepository(
     // -------------------------------------------------------------------------
 
     suspend fun createVault(masterPassword: CharArray, rawAnswers: List<String>): Result<Unit> =
-        mutex.withLock {
-            runCatching {
+        guarded {
+            run {
                 check(!store.exists()) { "A vault already exists on this device." }
                 val fresh = VaultDocument()
                 val file = codec.createVault(masterPassword, rawAnswers, fresh)
@@ -91,31 +103,31 @@ class VaultRepository(
         masterPassword: CharArray,
         rawAnswers: List<String>,
         document: VaultDocument,
-    ): Result<Unit> = mutex.withLock {
-        runCatching {
+    ): Result<Unit> = guarded {
+        run {
             val file = codec.createVault(masterPassword, rawAnswers, document)
             store.write(file)
             adopt(file, codec.unlockWithMaster(file, masterPassword))
         }
     }
 
-    suspend fun unlockWithMaster(masterPassword: CharArray): Result<Unit> = mutex.withLock {
-        runCatching {
+    suspend fun unlockWithMaster(masterPassword: CharArray): Result<Unit> = guarded {
+        run {
             val file = store.read()
             adopt(file, codec.unlockWithMaster(file, masterPassword))
         }
     }
 
-    suspend fun unlockWithRecoveryAnswers(rawAnswers: List<String>): Result<Unit> = mutex.withLock {
-        runCatching {
+    suspend fun unlockWithRecoveryAnswers(rawAnswers: List<String>): Result<Unit> = guarded {
+        run {
             val file = store.read()
             adopt(file, codec.unlockWithRecovery(file, rawAnswers))
         }
     }
 
     /** Unlock using a DEK already recovered through Android Keystore / biometrics. */
-    suspend fun unlockWithDek(recoveredDek: SecretKey): Result<Unit> = mutex.withLock {
-        runCatching {
+    suspend fun unlockWithDek(recoveredDek: SecretKey): Result<Unit> = guarded {
+        run {
             val file = store.read()
             adopt(file, codec.unlockWithDek(file, recoveredDek))
         }
@@ -143,8 +155,8 @@ class VaultRepository(
 
     /** Verifies [current] by attempting a decrypt, then re-wraps the DEK under [new]. */
     suspend fun changeMasterPassword(current: CharArray, new: CharArray): Result<Unit> =
-        mutex.withLock {
-            runCatching {
+        guarded {
+            run {
                 val file = encryptedFile ?: store.read()
                 // Verify current password (throws AeadDecryptionException if wrong).
                 codec.unlockWithMaster(file, current)
@@ -160,8 +172,8 @@ class VaultRepository(
      * after a successful recovery unlock ([unlockWithRecoveryAnswers]); the old
      * password is never revealed or required.
      */
-    suspend fun setMasterPasswordAfterRecovery(new: CharArray): Result<Unit> = mutex.withLock {
-        runCatching {
+    suspend fun setMasterPasswordAfterRecovery(new: CharArray): Result<Unit> = guarded {
+        run {
             val file = encryptedFile ?: error("Recovery unlock required first.")
             val liveDek = dek ?: error("Recovery unlock required first.")
             val updated = codec.rewrapMaster(file, liveDek, new)
@@ -173,8 +185,8 @@ class VaultRepository(
     suspend fun changeSecurityAnswers(
         currentMaster: CharArray,
         newRawAnswers: List<String>,
-    ): Result<Unit> = mutex.withLock {
-        runCatching {
+    ): Result<Unit> = guarded {
+        run {
             val file = encryptedFile ?: store.read()
             codec.unlockWithMaster(file, currentMaster) // verify master
             val liveDek = dek ?: error("Vault must be unlocked.")
@@ -208,7 +220,7 @@ class VaultRepository(
         val now = System.currentTimeMillis()
         val title = original.value("Title")
         val copy = original.copy(
-            id = java.util.UUID.randomUUID().toString(),
+            id = UUID.randomUUID().toString(),
             createdAtEpochMillis = now,
             updatedAtEpochMillis = now,
             fields = original.fields.map {
@@ -223,18 +235,50 @@ class VaultRepository(
     suspend fun importEntries(imported: List<VaultEntry>, mode: ImportMode): Result<Unit> =
         mutate { doc ->
             when (mode) {
-                ImportMode.ADD -> doc.copy(entries = doc.entries + imported)
-                ImportMode.REPLACE -> doc.copy(entries = imported)
+                // Restoring an encrypted backup of THIS vault would otherwise
+                // append entries that already exist, with identical ids. Duplicate
+                // ids break entry management: deleteEntry(id) removes every copy at
+                // once and upsertEntry only ever updates the first match, so the
+                // twin can never be edited or individually deleted. Give any
+                // colliding entry a fresh id instead.
+                ImportMode.ADD -> doc.copy(entries = doc.entries + withUniqueIds(imported, doc.entries))
+                ImportMode.REPLACE -> doc.copy(entries = withUniqueIds(imported, emptyList()))
             }
         }
+
+    /** Re-ids any entry whose id collides with [existing] or an earlier import row. */
+    private fun withUniqueIds(
+        imported: List<VaultEntry>,
+        existing: List<VaultEntry>,
+    ): List<VaultEntry> {
+        val taken = HashSet<String>(existing.map { it.id })
+        return imported.map { entry ->
+            if (entry.id.isBlank() || !taken.add(entry.id)) {
+                var fresh = UUID.randomUUID().toString()
+                while (!taken.add(fresh)) fresh = UUID.randomUUID().toString()
+                entry.copy(id = fresh)
+            } else {
+                entry
+            }
+        }
+    }
 
     // -------------------------------------------------------------------------
     // internals
     // -------------------------------------------------------------------------
 
-    private suspend fun mutate(transform: (VaultDocument) -> VaultDocument): Result<Unit> =
+    /**
+     * Serializes every vault operation behind [mutex] and runs the crypto + I/O on
+     * [cryptoDispatcher], never on the caller's (usually Main) dispatcher.
+     */
+    private suspend fun <T> guarded(block: () -> T): Result<T> =
         mutex.withLock {
-            runCatching {
+            withContext(cryptoDispatcher) { runCatching(block) }
+        }
+
+    private suspend fun mutate(transform: (VaultDocument) -> VaultDocument): Result<Unit> =
+        guarded {
+            run {
                 val current = document ?: error("Vault is locked.")
                 val file = encryptedFile ?: error("Vault is locked.")
                 val liveDek = dek ?: error("Vault is locked.")

@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -36,7 +37,7 @@ import com.example.offlinepasswordwallet.data.repository.toUserMessage
 import com.example.offlinepasswordwallet.di.ServiceLocator
 import com.example.offlinepasswordwallet.password.PasswordStrength
 import com.example.offlinepasswordwallet.security.BiometricAuthenticator
-import com.example.offlinepasswordwallet.security.BiometricKeyInvalidatedException
+import com.example.offlinepasswordwallet.security.BiometricNotConfiguredException
 import com.example.offlinepasswordwallet.security.RecoveryResult
 import com.example.offlinepasswordwallet.settings.AppSettings
 import com.example.offlinepasswordwallet.ui.components.PasswordField
@@ -201,17 +202,27 @@ fun UnlockScreen(
         activity != null &&
         BiometricAuthenticator.isAvailable(context)
 
+    /**
+     * Turns biometric login off and destroys the key material, then surfaces
+     * [reason]. The master password always still works, so this is always a safe
+     * fallback rather than a dead end.
+     */
+    fun revokeBiometric(reason: String?) {
+        keyManager.disable()
+        scope.launch { ServiceLocator.settingsRepository.setBiometricEnabled(false) }
+        error = reason
+    }
+
     fun runBiometricUnlock() {
         val act = activity ?: return
         val cipher = try {
             keyManager.getDecryptCipher()
-        } catch (e: BiometricKeyInvalidatedException) {
-            error = e.message
-            scope.launch { ServiceLocator.settingsRepository.setBiometricEnabled(false) }
-            keyManager.disable()
+        } catch (e: BiometricNotConfiguredException) {
+            revokeBiometric(null)
             return
         } catch (e: Exception) {
-            error = e.message
+            // Includes BiometricKeyInvalidatedException and anything unexpected.
+            revokeBiometric(e.message)
             return
         }
         BiometricAuthenticator.authenticate(
@@ -221,16 +232,23 @@ fun UnlockScreen(
             cipher = cipher,
             onSuccess = { authedCipher ->
                 scope.launch {
+                    // This coroutine is auto-started by LaunchedEffect on every
+                    // launch, so an escaping exception here would crash the app at
+                    // startup, repeatedly. Nothing is allowed to escape.
                     val dek = try {
                         keyManager.unwrapDekAfterAuth(authedCipher)
-                    } catch (e: BiometricKeyInvalidatedException) {
-                        error = e.message
-                        ServiceLocator.settingsRepository.setBiometricEnabled(false)
-                        keyManager.disable()
+                    } catch (e: Exception) {
+                        revokeBiometric(
+                            e.message
+                                ?: "Biometric login is no longer usable. Use your master password.",
+                        )
                         return@launch
                     }
-                    ServiceLocator.vaultRepository.unlockWithDek(dek)
-                        .onFailure { error = it.toUserMessage() }
+                    runCatching { ServiceLocator.vaultRepository.unlockWithDek(dek) }
+                        .fold(
+                            onSuccess = { r -> r.onFailure { error = it.toUserMessage() } },
+                            onFailure = { error = it.toUserMessage() },
+                        )
                 }
             },
             onError = { _, message -> error = message },
@@ -306,6 +324,17 @@ fun RecoveryScreen(onDone: () -> Unit, onCancel: () -> Unit) {
     var confirm by remember { mutableStateOf("") }
     var message by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+
+    // Verifying the answers unlocks the vault via the recovery key. If the user
+    // leaves before choosing a new master password (system back, process nav, …)
+    // the vault must NOT stay open — and it is still only unwrapable by the
+    // forgotten password + the answers, so we simply re-lock.
+    val completed = remember { mutableStateOf(false) }
+    DisposableEffect(Unit) {
+        onDispose {
+            if (!completed.value) ServiceLocator.vaultRepository.lock()
+        }
+    }
 
     Scaffold(topBar = { TopAppBar(title = { Text("Reset master password") }) }) { padding ->
         Column(
@@ -409,13 +438,17 @@ fun RecoveryScreen(onDone: () -> Unit, onCancel: () -> Unit) {
                             pw.fill(' ')
                             busy = false
                             result.fold(
-                                onSuccess = { onDone() },
+                                onSuccess = { completed.value = true; onDone() },
                                 onFailure = { message = it.toUserMessage() },
                             )
                         }
                     },
                     modifier = Modifier.fillMaxWidth().testTag("recovery_apply"),
                 ) { Text("Set new master password") }
+                TextButton(
+                    onClick = onCancel,
+                    modifier = Modifier.fillMaxWidth().testTag("recovery_cancel_reset"),
+                ) { Text("Cancel — keep the old master password") }
             }
         }
     }

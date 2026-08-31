@@ -116,7 +116,7 @@ class BackupFlowTest {
     }
 
     @Test
-    fun `export requires an unlocked vault`() {
+    fun `export requires an unlocked vault`() = runTest {
         repo.lock()
         assertTrue(manager.exportBytes(backupPass.copyOf()).isFailure)
     }

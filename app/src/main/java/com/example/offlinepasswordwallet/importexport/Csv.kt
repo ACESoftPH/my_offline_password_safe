@@ -30,6 +30,12 @@ object Csv {
         val field = StringBuilder()
         var inQuotes = false
         var fieldStarted = false // did this record contain any content/field at all?
+        // Per RFC 4180 a quote only opens a quoted section at the START of a
+        // field. Once the field has any content, a quote is ordinary data. Without
+        // this flag a stray `"` inside an unquoted value (e.g. the password
+        // `pa"ss`) would swallow every following delimiter and newline and merge
+        // the rest of the file into one field.
+        var fieldHasContent = false
 
         var i = 0
         val n = text.length
@@ -39,6 +45,7 @@ object Csv {
             row.add(field.toString())
             field.setLength(0)
             fieldStarted = true
+            fieldHasContent = false
         }
 
         fun endRecord() {
@@ -49,6 +56,7 @@ object Csv {
             }
             row = ArrayList()
             fieldStarted = false
+            fieldHasContent = false
         }
 
         while (i < n) {
@@ -68,8 +76,14 @@ object Csv {
             } else {
                 when (c) {
                     QUOTE -> {
-                        inQuotes = true
-                        fieldStarted = true
+                        if (fieldHasContent) {
+                            // Mid-field quote: literal data, not a quoted section.
+                            field.append(c)
+                        } else {
+                            inQuotes = true
+                            fieldStarted = true
+                            fieldHasContent = true
+                        }
                     }
                     delimiter -> endField()
                     CR -> {
@@ -80,6 +94,7 @@ object Csv {
                     else -> {
                         field.append(c)
                         fieldStarted = true
+                        fieldHasContent = true
                     }
                 }
             }
@@ -109,6 +124,32 @@ object Csv {
         }
         return sb.toString()
     }
+
+    /**
+     * Leading characters that make Excel / LibreOffice / Sheets treat a cell as a
+     * formula rather than text (CSV injection, OWASP "Formula Injection").
+     */
+    private val FORMULA_TRIGGERS = charArrayOf('=', '+', '-', '@', '\t', '\r')
+
+    private fun startsWithFormulaTrigger(value: String): Boolean =
+        value.isNotEmpty() && value[0] in FORMULA_TRIGGERS
+
+    /**
+     * Neutralizes a value that a spreadsheet would otherwise execute, by prefixing
+     * an apostrophe (the standard "treat as text" marker). Applied on export only;
+     * [unescapeFormula] reverses it on import, so an Offline Password Wallet
+     * export → import round trip is lossless.
+     */
+    fun escapeFormula(value: String): String =
+        if (startsWithFormulaTrigger(value)) "'$value" else value
+
+    /** Inverse of [escapeFormula]. Leaves any other leading apostrophe alone. */
+    fun unescapeFormula(value: String): String =
+        if (value.length >= 2 && value[0] == '\'' && value[1] in FORMULA_TRIGGERS) {
+            value.substring(1)
+        } else {
+            value
+        }
 
     private fun encodeField(value: String, delimiter: Char): String {
         val mustQuote = value.any { it == delimiter || it == QUOTE || it == CR || it == LF }

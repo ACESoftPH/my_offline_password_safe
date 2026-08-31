@@ -170,6 +170,43 @@ class VaultRepositoryTest {
         assertTrue(repo.unlockWithRecoveryAnswers(newAnswers).isSuccess)
     }
 
+    // --- regression: importing entries that already exist must not clone ids ---
+
+    @Test
+    fun `import ADD re-ids entries whose ids already exist`() = runTest {
+        repo.createVault(master.copyOf(), answers)
+        val existing = entry("Mine")
+        repo.upsertEntry(existing)
+
+        // Same objects, same ids — exactly what restoring a backup of this vault does.
+        repo.importEntries(listOf(existing), ImportMode.ADD)
+
+        val all = entries()
+        assertEquals(2, all.size)
+        assertEquals(2, all.map { it.id }.toSet().size)
+    }
+
+    @Test
+    fun `re-ided duplicates can be deleted and edited independently`() = runTest {
+        repo.createVault(master.copyOf(), answers)
+        val original = entry("Mine")
+        repo.upsertEntry(original)
+        repo.importEntries(listOf(original), ImportMode.ADD)
+
+        val clone = entries().first { it.id != original.id }
+        repo.deleteEntry(clone.id)
+        assertEquals(listOf(original.id), entries().map { it.id })
+    }
+
+    @Test
+    fun `import ADD de-duplicates ids within the imported batch itself`() = runTest {
+        repo.createVault(master.copyOf(), answers)
+        val e = entry("Twin")
+        repo.importEntries(listOf(e, e, e), ImportMode.ADD)
+        assertEquals(3, entries().size)
+        assertEquals(3, entries().map { it.id }.toSet().size)
+    }
+
     private fun entries(): List<VaultEntry> =
         (repo.state.value as VaultState.Unlocked).entries
 }

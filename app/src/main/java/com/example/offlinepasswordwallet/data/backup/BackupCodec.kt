@@ -75,6 +75,31 @@ class BackupCodec(
                 "Backup format version ${file.formatVersion} is not supported by this app version.",
             )
         }
+        // The KDF cost comes out of an untrusted file. Honouring an absurd value
+        // would pin the CPU for hours (a denial of service that locks the owner
+        // out of their own backup); honouring a tiny one would silently weaken the
+        // KDF below the documented floor.
+        if (file.kdf.algorithm != CryptoConstants.PBKDF2_ALGORITHM) {
+            throw BackupFormatException("Unsupported key-derivation algorithm in the backup file.")
+        }
+        if (file.kdf.iterations < CryptoConstants.MIN_ACCEPTED_KDF_ITERATIONS ||
+            file.kdf.iterations > CryptoConstants.MAX_ACCEPTED_KDF_ITERATIONS
+        ) {
+            throw BackupFormatException(
+                "Backup file declares an out-of-range key-derivation cost and was not opened.",
+            )
+        }
+        if (file.kdf.keyLengthBits !in CryptoConstants.ACCEPTED_KDF_KEY_LENGTH_BITS) {
+            throw BackupFormatException("Unsupported key length in the backup file.")
+        }
+        val salt = try {
+            Base64Util.decode(file.saltB64)
+        } catch (e: IllegalArgumentException) {
+            throw BackupFormatException("Backup file contains a malformed salt.", e)
+        }
+        if (salt.isEmpty() || salt.size > CryptoConstants.MAX_SALT_LENGTH_BYTES) {
+            throw BackupFormatException("Backup file contains a malformed salt.")
+        }
         return file
     }
 
@@ -83,8 +108,15 @@ class BackupCodec(
      *         was tampered with / corrupted.
      */
     fun open(file: EncryptedBackupFile, passphrase: CharArray): VaultDocument {
+        // decode() has already bounded these; re-check so a hand-built
+        // EncryptedBackupFile cannot bypass the guard by calling open() directly.
+        if (file.kdf.iterations < CryptoConstants.MIN_ACCEPTED_KDF_ITERATIONS ||
+            file.kdf.iterations > CryptoConstants.MAX_ACCEPTED_KDF_ITERATIONS
+        ) {
+            throw BackupFormatException("Backup file declares an out-of-range key-derivation cost.")
+        }
         val salt = Base64Util.decode(file.saltB64)
-        val key = crypto.deriveKey(passphrase, salt, file.kdf.iterations)
+        val key = crypto.deriveKey(passphrase, salt, file.kdf.iterations, file.kdf.keyLengthBits)
         try {
             val plaintext = try {
                 crypto.decrypt(key, EncryptedBlob.fromDto(file.payload))

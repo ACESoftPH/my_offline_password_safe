@@ -35,4 +35,30 @@ class PasswordStrengthTest {
     fun `empty password is very weak`() {
         assertEquals(StrengthLevel.VERY_WEAK, PasswordStrength.evaluate("").level)
     }
+
+    // --- regression: the class check used to be ASCII-only --------------------
+
+    @Test
+    fun `a strong non-Latin passphrase is accepted by the policy`() {
+        // Cyrillic upper + lower + digit + symbol: four real classes, previously
+        // counted as one (only the symbol matched an ASCII range).
+        assertNull(PasswordStrength.masterPolicyError("Пароль-Надёжный7!".toCharArray()))
+        // Greek.
+        assertNull(PasswordStrength.masterPolicyError("Ασφάλεια-Κωδικός9!".toCharArray()))
+    }
+
+    @Test
+    fun `a caseless script still counts as a character class`() {
+        assertNull(PasswordStrength.masterPolicyError("日本語のパスワード42!".toCharArray()))
+    }
+
+    @Test
+    fun `non-Latin letters contribute to the entropy estimate`() {
+        assertTrue(PasswordStrength.evaluate("Пароль-Надёжный7!").estimatedBits >= 60)
+    }
+
+    @Test
+    fun `a low-variety password is still rejected`() {
+        assertNotNull(PasswordStrength.masterPolicyError("паролыпаролыпаролы".toCharArray()))
+    }
 }

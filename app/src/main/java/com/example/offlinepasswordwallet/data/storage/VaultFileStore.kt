@@ -2,7 +2,10 @@ package com.example.offlinepasswordwallet.data.storage
 
 import android.content.Context
 import com.example.offlinepasswordwallet.crypto.VaultFormatException
+import com.example.offlinepasswordwallet.crypto.VaultRollbackException
 import com.example.offlinepasswordwallet.data.model.EncryptedVaultFile
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -23,6 +26,16 @@ import java.io.IOException
  *   4. atomically rename temp over the real file
  * The previous good file is only replaced in step 4, so power loss at any point
  * leaves either the old file or the fully-written new file intact.
+ *
+ * **Rollback detection.** After every successful write the store records the
+ * vault's id + revision in `integrity.json`. On read, a file whose revision is
+ * behind that high-water mark is refused with [VaultRollbackException] instead of
+ * being opened, which catches an old `vault.json` being restored over the current
+ * one (file-manager backup, sync conflict, partial write, casual tampering).
+ * Note the honest limit: an attacker who can write `vault.json` can usually also
+ * write `integrity.json`, so this is not a defence against a privileged attacker
+ * — it is protection against stale copies and unsophisticated tampering. Real
+ * anti-rollback needs a hardware-backed monotonic counter.
  */
 class VaultFileStore(context: Context) {
 
@@ -30,8 +43,13 @@ class VaultFileStore(context: Context) {
     private val dir: File = File(appContext.filesDir, DIR_NAME)
     private val vaultFile: File = File(dir, FILE_NAME)
     private val tempFile: File = File(dir, "$FILE_NAME.tmp")
+    private val integrityFile: File = File(dir, INTEGRITY_FILE_NAME)
 
     private val codec = VaultCodec()
+    private val json = Json { encodeDefaults = true; ignoreUnknownKeys = true }
+
+    @Serializable
+    private data class IntegrityMarker(val vaultId: String, val revision: Long)
 
     fun exists(): Boolean = vaultFile.isFile && vaultFile.length() > 0
 
@@ -41,6 +59,8 @@ class VaultFileStore(context: Context) {
      * @throws VaultFormatException if the file is missing, empty, or unparseable.
      *         (A wrong password is NOT detected here — that surfaces later, at
      *         decryption time, as AeadDecryptionException.)
+     * @throws VaultRollbackException if the file is older than the last write this
+     *         device recorded.
      */
     fun read(): EncryptedVaultFile {
         if (!exists()) throw VaultFormatException("No vault file exists yet.")
@@ -49,7 +69,13 @@ class VaultFileStore(context: Context) {
         } catch (e: IOException) {
             throw VaultFormatException("Vault file could not be read from storage.", e)
         }
-        return codec.decodeFromBytes(bytes)
+        val file = codec.decodeFromBytes(bytes)
+        readIntegrityMarker()?.let { marker ->
+            if (marker.vaultId == file.vaultId && file.revision < marker.revision) {
+                throw VaultRollbackException(marker.revision, file.revision)
+            }
+        }
+        return file
     }
 
     /**
@@ -91,6 +117,32 @@ class VaultFileStore(context: Context) {
         }
         restrictPermissions(vaultFile)
         fsyncDir(dir)
+        writeIntegrityMarker(IntegrityMarker(file.vaultId, file.revision))
+    }
+
+    private fun readIntegrityMarker(): IntegrityMarker? =
+        runCatching {
+            if (!integrityFile.isFile) return@runCatching null
+            json.decodeFromString(IntegrityMarker.serializer(), integrityFile.readText())
+        }.getOrNull()
+
+    private fun writeIntegrityMarker(marker: IntegrityMarker) {
+        runCatching {
+            val temp = File(dir, "$INTEGRITY_FILE_NAME.tmp")
+            FileOutputStream(temp).use { out ->
+                out.write(
+                    json.encodeToString(IntegrityMarker.serializer(), marker)
+                        .toByteArray(Charsets.UTF_8),
+                )
+                out.flush()
+                out.fd.sync()
+            }
+            if (!temp.renameTo(integrityFile)) {
+                temp.copyTo(integrityFile, overwrite = true)
+                temp.delete()
+            }
+            restrictPermissions(integrityFile)
+        }
     }
 
     /** Removes the vault entirely (used only by an explicit, confirmed reset). */
@@ -98,6 +150,8 @@ class VaultFileStore(context: Context) {
     fun deleteVault() {
         tempFile.delete()
         vaultFile.delete()
+        integrityFile.delete()
+        File(dir, "$INTEGRITY_FILE_NAME.tmp").delete()
     }
 
     private fun fsyncDir(directory: File) {
@@ -125,5 +179,6 @@ class VaultFileStore(context: Context) {
     companion object {
         private const val DIR_NAME = "vault"
         private const val FILE_NAME = "vault.json"
+        private const val INTEGRITY_FILE_NAME = "integrity.json"
     }
 }

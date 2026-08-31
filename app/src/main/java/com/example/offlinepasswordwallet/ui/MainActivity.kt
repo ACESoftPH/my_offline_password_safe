@@ -26,6 +26,15 @@ import kotlinx.coroutines.launch
 class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Applied BEFORE anything can be drawn. Reading the preference is async
+        // (DataStore), so we start secure and only relax it if the user has
+        // actually turned the setting off — otherwise the first frames and the
+        // recents thumbnail would be capturable on every cold start.
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_SECURE,
+            WindowManager.LayoutParams.FLAG_SECURE,
+        )
+
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 

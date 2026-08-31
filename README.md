@@ -25,7 +25,7 @@ encrypted file in the app's private storage.
 # Release APK (R8 + resource shrinking, lint-vital)
 ./gradlew assembleRelease          # -> app/build/outputs/apk/release/app-release-unsigned.apk
 
-# JVM + Robolectric unit tests (102 tests)
+# JVM + Robolectric unit tests (146 tests)
 ./gradlew testDebugUnitTest
 
 # Android lint
@@ -86,6 +86,7 @@ can never sit behind the lock screen.
 ```
 <app private files>/vault/
 ├── vault.json           encrypted vault envelope (see §4)
+├── integrity.json       last written vaultId + revision, for rollback detection (no secrets)
 ├── biometric.json       DEK wrapped by an Android Keystore key (only if biometrics on)
 └── recovery_state.json  recovery failed-attempt counter + lockout deadline (no secrets)
 ```
@@ -120,7 +121,7 @@ can never sit behind the lock screen.
 
 ```jsonc
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "kdf": {
     "algorithm": "PBKDF2WithHmacSHA256",
     "masterIterations": 600000,
@@ -134,10 +135,43 @@ can never sit behind the lock screen.
   "payload":            { "ivB64": "…12 bytes…", "ciphertextB64": "…vault JSON + GCM tag…" },
   "securityQuestions": [ "…the five fixed question texts (not answers)…" ],
   "vaultId": "uuid",
+  "revision": 7,                  // monotonic write counter, part of the payload AAD
   "createdAtEpochMillis": 0,
   "modifiedAtEpochMillis": 0
 }
 ```
+
+**Header parameters are validated before use.** `formatVersion`, the KDF
+algorithm, both iteration counts, the key length and both salts come out of a
+file that an attacker may control. They are range-checked on every read
+(iterations must be 100,000–2,000,000) *before* anything reaches the KDF, so a
+hostile file can neither pin the CPU for hours (a denial of service that locks
+the owner out) nor silently drop the KDF below the documented floor. Out-of-range
+values are a `VaultFormatException`, never an honoured parameter. The same check
+guards `.opwbackup` files.
+
+### Payload binding and rollback detection (format v2)
+
+The payload's AES-GCM is authenticated over associated data
+`opw-vault-payload|v<version>|<vaultId>|<revision>`, and `revision` increments on
+every persisted write. Because all wrappers protect the *same, stable* DEK, an
+attacker with one-time write access could otherwise paste a `payload` blob
+captured from an earlier version of the same file back over the current one — it
+would still decrypt cleanly and silently revert the vault (reinstating a deleted
+credential, undoing a post-breach rotation). With the AAD in place that splice is
+a hard authentication failure. The AAD deliberately excludes the salts and
+wrapped keys, so changing the master password or the security answers does not
+invalidate the payload.
+
+`VaultFileStore` additionally records the last written `vaultId` + `revision` in
+`vault/integrity.json` and refuses to open a vault file that is behind that mark
+(`VaultRollbackException`). **Honest limit:** an attacker who can write
+`vault.json` can usually also write `integrity.json`, so this catches stale
+copies, sync conflicts, partial writes and casual tampering — not a privileged
+attacker. Real anti-rollback needs a hardware-backed monotonic counter.
+
+v1 files (no AAD, no revision) are still readable and are upgraded to v2 on the
+next write.
 
 ### Keys
 
@@ -249,10 +283,25 @@ five answers ─▶ normalize ─▶ PBKDF2 ─▶ Recovery KEK
 
 - Wrong answers **never touch the vault file**, so a failed attempt cannot
   destroy data.
-- **Rate limiting** (`RecoveryRateLimiter`, persisted to
-  `recovery_state.json` so an app restart can't reset it): 4 free attempts, then
-  escalating lockouts 30 s → 2 m → 10 m → 30 m → 1 h. A successful verification
-  clears the counter.
+- **Rate limiting** (`RecoveryRateLimiter`, persisted to `recovery_state.json` so
+  an app restart can't reset it): 4 free attempts, then escalating lockouts
+  30 s → 2 m → 10 m → 30 m → 1 h. A successful verification clears the counter.
+
+  The answers are the lowest-entropy way into the vault, so the throttle **fails
+  closed**:
+  - a state file that exists but is **corrupt or truncated is treated as maximum
+    penalty**, not as a clean slate — wiping the counter is never a win for the
+    attacker;
+  - an **in-memory tally** runs alongside the file, so making the file read-only
+    (silently failing every write) cannot disable the throttle;
+  - the deadline is enforced against **both** the wall clock (survives reboot)
+    and `SystemClock.elapsedRealtime` (immune to clock changes), taking whichever
+    is longer, and a wall clock that has moved *backwards* since the lockout was
+    armed re-arms the full penalty instead of releasing.
+- The vault is unlocked by the recovery key only for the duration of the reset
+  screen. If the user leaves before choosing a new master password, the screen
+  re-locks the vault on dispose, so a half-finished reset can never leave a
+  decrypted vault behind an auth screen.
 - The old master password is never derived, displayed, or logged.
 
 ### Change security answers (Settings → Security)
@@ -285,6 +334,19 @@ inside fields, newlines inside quoted fields, LF / CR / CRLF line endings, empty
 values, a leading UTF-8 BOM, and arbitrary Unicode. Blank header cells become
 `Column N`; duplicate header names are disambiguated (`Title`, `Title (2)`, …) so
 one entry never carries two identically-named fields.
+
+Per RFC 4180 a quote only opens a quoted section at the **start of a field**;
+anywhere else it is ordinary data. That matters for real-world imports: a value
+like `pa"ss` from a manager that doesn't quote its output would otherwise put the
+parser into quoted mode and swallow every following delimiter and newline,
+silently collapsing the rest of the file into one field.
+
+**Spreadsheet formula injection.** A CSV value beginning with `=`, `+`, `-`, `@`,
+TAB or CR is executed as a formula by Excel / LibreOffice / Sheets. Export
+prefixes such values with an apostrophe (the standard "this is text" marker) and
+import strips it back off, so an Offline Password Wallet export → import round
+trip is lossless while the exported file is safe to open in a spreadsheet. An
+apostrophe that isn't followed by one of those characters is left alone.
 
 ### Import (`Menu → Import / Export → Import CSV`)
 
@@ -372,7 +434,10 @@ transmits it.
      so the old device-bound biometric wrapping is stale).
    - **Vault already unlocked**: optionally just **add** the backup's entries to
      the current vault (re-encrypted immediately), or take the replace path
-     above.
+     above. Imported entries whose id already exists get a **fresh id**, so
+     restoring a backup of the *current* vault cannot produce two entries sharing
+     one id (which would make `delete` remove both and `edit` only ever reach the
+     first).
 
 Losing the backup passphrase makes that backup unrecoverable — by design.
 
@@ -385,6 +450,12 @@ device sleep):
 
 - Timeout options (Settings → Security → Auto-Lock Timeout): 30 s, 1 m, 2 m,
   5 m (**default**), 10 m, 30 m, Never.
+- `ServiceLocator.bindAutoLock` drives the manager from `VaultRepository.state`:
+  the timer is armed on every `Locked → Unlocked` transition and disarmed on the
+  way back. This bridge is the thing that makes auto-lock work at all — without
+  it the manager's `unlocked` flag never flips, `onUserInteraction()` no-ops, the
+  monitor exits immediately and a decrypted vault would sit in memory forever. It
+  has a dedicated regression test (`AutoLockWiringTest`).
 - `MainActivity.onUserInteraction()` feeds every touch / key / nav event to the
   manager, resetting the idle timer.
 - A 1-second monitor coroutine locks the vault when
@@ -401,8 +472,17 @@ device sleep):
 process, and this app does **not** claim to. It clears references and returns to
 authentication; it cannot guarantee every byte is gone from RAM (see §9).
 
-`FLAG_SECURE` is set on the window whenever "Block screenshots" is enabled
-(default on), which also hides the app contents from the recents thumbnail.
+`FLAG_SECURE` is applied **synchronously at the top of `onCreate`**, before
+anything can be drawn, and only relaxed later if the "Block screenshots" setting
+(default on) turns out to be off. Reading that preference is asynchronous, so
+starting secure is what keeps the first frames — and the recents thumbnail — from
+being capturable on a cold start.
+
+All vault operations (`unlock*`, `createVault`, `changeMasterPassword`, every
+entry mutation, backup export/restore) run on `Dispatchers.Default`, never on the
+caller's dispatcher. Each performs a 600,000-iteration PBKDF2 and/or an fsync'd
+write; on the Main thread that is hundreds of milliseconds to several seconds of
+frozen UI — an ANR on mid-range devices.
 
 ---
 
@@ -436,7 +516,13 @@ authentication; it cannot guarantee every byte is gone from RAM (see §9).
   does not display the value.
 - After a configurable delay (default 30 s, Settings slider) the app clears the
   clipboard **if our value is still the current clip** — `clearPrimaryClip()` on
-  API 28+, overwrite with a space on API 26–27.
+  API 28+, overwrite with a space on API 26–27. If someone else has replaced the
+  clipboard in the meantime, we leave it alone.
+- Once a clear has been promised, a following **non-sensitive** copy does not
+  cancel it: whatever we put on the clipboard next is still cleared on schedule.
+  (Previously, copying a username right after a password silently dropped the
+  guarantee the snackbar had just shown the user.) A newer sensitive copy resets
+  the window rather than inheriting the old deadline.
 - Passwords are never logged.
 
 **Limitation:** another app or a clipboard-manager may read the value before it
@@ -474,11 +560,22 @@ Defaults (length, specials on/off) are configurable in Settings.
   custom fingerprint/face code exists**; the OS does all matching and never
   exposes raw biometric data to the app.
 - Enabling: generate the Keystore key → `BiometricPrompt` authorizes an
-  encrypt-mode `Cipher` → wrap the current DEK → store `biometric.json`.
+  encrypt-mode `Cipher` → wrap the current DEK → store `biometric.json` (written
+  through a temp file + fsync + atomic rename, so a crash mid-write cannot leave
+  a blob that parses but fails to decrypt).
 - Unlocking: `BiometricPrompt` authorizes a decrypt-mode `Cipher` (bound to the
   stored IV) → unwrap the DEK → unlock. The negative button is
   **"Use master password"**.
 - Revocable: disabling deletes the Keystore key **and** the wrapped blob.
+- **Nothing escapes the unlock path.** Generating a key under an existing alias
+  replaces it, so every enable failure (prompt cancelled, error, write failure)
+  turns the setting back off and destroys the key material — the toggle can never
+  read "on" while no usable wrapped key exists. On the unlock side, a corrupt or
+  unparseable `biometric.json`, a bad IV, or a GCM tag that no longer verifies are
+  all reported as `BiometricKeyInvalidatedException` rather than escaping as an
+  unhandled exception. That path is auto-launched on every app start, so an escape
+  there would have crashed the app on launch, repeatedly, instead of falling back
+  to the master password.
 - Invalidation handled: new biometric enrollment, removed biometrics, lock-screen
   changes and Keystore key invalidation all cause a
   `BiometricKeyInvalidatedException`; the app then disables biometric login,
@@ -497,6 +594,10 @@ Defaults (length, specials on/off) are configurable in Settings.
 |--------|-----------|
 | Lost/stolen locked device, attacker reads `vault.json` | AES-256-GCM payload + wrapped DEKs; only a PBKDF2 KEK (600k iters) or a Keystore-gated key can unwrap. Offline guessing is bounded by master-password entropy. |
 | Tampering with the vault file | GCM authentication fails → explicit corruption/incorrect-password error; no silent acceptance. |
+| Splicing an old `payload` back over a current header (silent rollback) | Payload AAD binds it to `(formatVersion, vaultId, revision)`; the spliced blob fails the tag check. A revision high-water mark also refuses a stale whole file. Partial mitigation — see §14. |
+| Hostile KDF parameters in a vault/backup file (CPU-pinning DoS, or a silently weakened KDF) | Iterations, algorithm, key length and salts are range-checked before reaching the KDF; out-of-range is a format error. |
+| Bypassing the recovery throttle by wiping/locking its state file, or by moving the clock | Corrupt state = maximum penalty; in-memory tally floors the count; deadline enforced on both wall and monotonic clocks. |
+| A CSV export detonating in a spreadsheet (formula injection) | Values starting with `= + - @` TAB CR are neutralized on export and restored on import. |
 | Shoulder-surfing / screen capture | Passwords masked with `#`; `FLAG_SECURE` on by default (blocks screenshots, screen recording, recents preview). |
 | App left open | Inactivity auto-lock + lock-on-background; references cleared. |
 | Clipboard scraping | Sensitive-flagged clips + timed auto-clear. |
@@ -542,6 +643,17 @@ Additional constraints:
   is software-emulated, weakening the biometric path's tamper resistance (the
   master-password path is unaffected).
 - **The clipboard** may be read by other apps before auto-clear.
+- **Rollback protection is partial.** The revision high-water mark lives in
+  `vault/integrity.json`, next to the vault. An attacker who can write one can
+  usually write the other, so this reliably catches stale copies, sync conflicts,
+  partial writes and casual tampering — not a privileged attacker. Genuine
+  anti-rollback needs a hardware-backed monotonic counter, which Android does not
+  expose to ordinary apps. The payload AAD is *not* partial: splicing an old
+  payload into a current header always fails, regardless of attacker privilege.
+- **The recovery throttle's state file can still be deleted outright** by an
+  attacker who already has read/write access to app-private storage — that is
+  read as a genuine first run. Such an attacker can also read the encrypted vault
+  directly, so the throttle is not the binding constraint in that scenario.
 - Using encryption **does not by itself make the app secure**. The security model
   is exactly what is described in this document — its strength is bounded by the
   master password, the device's integrity, and the choices above.

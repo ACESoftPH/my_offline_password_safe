@@ -36,6 +36,13 @@ class AppLockManager(
     @Volatile private var unlocked: Boolean = false
     private var monitorJob: Job? = null
 
+    /**
+     * Whether the inactivity timer is currently running. This is the signal that
+     * the manager has actually been told about an unlock — a regression here is
+     * what silently disabled auto-lock entirely, so it is asserted in tests.
+     */
+    val isArmed: Boolean get() = unlocked
+
     init {
         scope.launch {
             settings.collect {

@@ -45,11 +45,15 @@ object PasswordStrength {
         if (password.isEmpty()) {
             return StrengthResult(StrengthLevel.VERY_WEAK, 0, 0f)
         }
+        // Unicode-aware: a strong Greek/Cyrillic/CJK passphrase must not be scored
+        // as if it contained no letters at all.
         var pool = 0
-        if (password.any { it in 'a'..'z' }) pool += 26
-        if (password.any { it in 'A'..'Z' }) pool += 26
-        if (password.any { it in '0'..'9' }) pool += 10
+        if (password.any { it.isLowerCase() }) pool += 26
+        if (password.any { it.isUpperCase() }) pool += 26
+        if (password.any { it.isDigit() }) pool += 10
         if (password.any { !it.isLetterOrDigit() }) pool += 32
+        // Letters with no upper/lower distinction (CJK, Hebrew, …) still add entropy.
+        if (pool == 0 && password.any { it.isLetter() }) pool += 26
 
         val uniqueRatio = password.toSet().size.toDouble() / password.length
         val rawBits = password.length * (ln(pool.toDouble().coerceAtLeast(2.0)) / ln(2.0))
@@ -66,12 +70,19 @@ object PasswordStrength {
         return StrengthResult(level, bits, fraction)
     }
 
+    /**
+     * Unicode-aware character-class count. Using ASCII ranges here would reject a
+     * perfectly strong non-Latin passphrase for "not enough kinds of character",
+     * and would also mis-score caseless scripts. A script with no case distinction
+     * (CJK, Hebrew, Arabic, …) counts as one class on its own.
+     */
     private fun countClasses(s: String): Int {
         var c = 0
-        if (s.any { it in 'a'..'z' }) c++
-        if (s.any { it in 'A'..'Z' }) c++
-        if (s.any { it in '0'..'9' }) c++
+        if (s.any { it.isLowerCase() }) c++
+        if (s.any { it.isUpperCase() }) c++
+        if (s.any { it.isDigit() }) c++
         if (s.any { !it.isLetterOrDigit() }) c++
+        if (s.any { it.isLetter() && !it.isLowerCase() && !it.isUpperCase() }) c++
         return c
     }
 }

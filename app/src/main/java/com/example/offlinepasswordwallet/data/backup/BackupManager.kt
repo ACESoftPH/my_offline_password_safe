@@ -3,6 +3,9 @@ package com.example.offlinepasswordwallet.data.backup
 import com.example.offlinepasswordwallet.data.model.ImportMode
 import com.example.offlinepasswordwallet.data.model.VaultDocument
 import com.example.offlinepasswordwallet.data.repository.VaultRepository
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Coordinates encrypted-backup export and restore on top of [VaultRepository].
@@ -19,23 +22,35 @@ class BackupManager(
     private val repository: VaultRepository,
     private val appVersionName: String,
     private val codec: BackupCodec = BackupCodec(),
+    /** Both operations below run a 600,000-iteration PBKDF2; keep them off Main. */
+    private val cryptoDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     /** Serializes an encrypted backup of the currently unlocked vault. */
-    fun exportBytes(passphrase: CharArray): Result<ByteArray> = runCatching {
-        val document = repository.currentDocument()
-            ?: error("Unlock the vault before exporting a backup.")
-        codec.create(passphrase, document, appVersionName)
-    }
+    suspend fun exportBytes(passphrase: CharArray): Result<ByteArray> =
+        withContext(cryptoDispatcher) {
+            runCatching {
+                val document = repository.currentDocument()
+                    ?: error("Unlock the vault before exporting a backup.")
+                codec.create(passphrase, document, appVersionName)
+            }
+        }
 
     /** Decodes + decrypts a backup file, returning its metadata and content. */
-    fun previewAndDecrypt(
+    suspend fun previewAndDecrypt(
         bytes: ByteArray,
         passphrase: CharArray,
-    ): Result<Pair<BackupPreview, VaultDocument>> = runCatching {
-        val file = codec.decode(bytes)
-        val document = codec.open(file, passphrase)
-        BackupPreview(file.entryCount, file.createdAtEpochMillis, file.appVersionName) to document
-    }
+    ): Result<Pair<BackupPreview, VaultDocument>> =
+        withContext(cryptoDispatcher) {
+            runCatching {
+                val file = codec.decode(bytes)
+                val document = codec.open(file, passphrase)
+                BackupPreview(
+                    file.entryCount,
+                    file.createdAtEpochMillis,
+                    file.appVersionName,
+                ) to document
+            }
+        }
 
     /**
      * Rebuilds the vault from [document] under a NEW master password and NEW

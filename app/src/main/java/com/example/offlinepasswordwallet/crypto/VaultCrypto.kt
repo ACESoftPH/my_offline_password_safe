@@ -103,6 +103,11 @@ class VaultCrypto {
         iterations: Int,
         keyLengthBits: Int = CryptoConstants.PBKDF2_KEY_LENGTH_BITS,
     ): SecretKey {
+        // Guard before PBEKeySpec, which throws IllegalArgumentException (not a
+        // GeneralSecurityException) for a non-positive iteration count / key size.
+        require(iterations > 0) { "iterations must be positive" }
+        require(keyLengthBits > 0) { "keyLengthBits must be positive" }
+        require(salt.isNotEmpty()) { "salt must not be empty" }
         var spec: PBEKeySpec? = null
         try {
             spec = PBEKeySpec(secret, salt, iterations, keyLengthBits)
@@ -115,6 +120,8 @@ class VaultCrypto {
             }
         } catch (e: GeneralSecurityException) {
             throw CryptoUnavailableException("PBKDF2 key derivation failed", e)
+        } catch (e: IllegalArgumentException) {
+            throw CryptoUnavailableException("Invalid PBKDF2 parameters", e)
         } finally {
             spec?.clearPassword()
         }

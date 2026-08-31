@@ -26,8 +26,22 @@ package com.example.offlinepasswordwallet.crypto
  */
 object CryptoConstants {
 
-    /** Current on-disk vault format version. */
-    const val VAULT_FORMAT_VERSION = 1
+    /**
+     * Current on-disk vault format version.
+     *
+     * v1: no associated data on the payload, no write counter.
+     * v2: the payload's AES-GCM is bound to (formatVersion, vaultId, revision) as
+     *     associated data, and [com.example.offlinepasswordwallet.data.model.EncryptedVaultFile.revision]
+     *     increments on every write. v1 files are still readable and are upgraded
+     *     to v2 on the next write.
+     */
+    const val VAULT_FORMAT_VERSION = 2
+
+    /** Oldest on-disk format this build can still open. */
+    const val MIN_SUPPORTED_VAULT_FORMAT_VERSION = 1
+
+    /** Format version from which the payload carries associated data. */
+    const val FIRST_AAD_VAULT_FORMAT_VERSION = 2
 
     // --- AES-GCM ---
     const val AES_ALGORITHM = "AES"
@@ -56,7 +70,22 @@ object CryptoConstants {
 
     const val PBKDF2_KEY_LENGTH_BITS = 256
 
+    /**
+     * Bounds for a KDF iteration count read out of a *file* (vault header or
+     * backup envelope). File-supplied parameters are attacker-controlled if the
+     * file is: an absurdly large value would pin a core for hours (permanent ANR /
+     * lock-out), and a tiny one would silently weaken the KDF far below the
+     * documented OWASP floor. Anything outside this window is rejected as a
+     * malformed file rather than honoured.
+     */
+    const val MIN_ACCEPTED_KDF_ITERATIONS = 100_000
+    const val MAX_ACCEPTED_KDF_ITERATIONS = 2_000_000
+
+    /** Accepted derived-key sizes for file-supplied KDF parameters. */
+    val ACCEPTED_KDF_KEY_LENGTH_BITS = setOf(256)
+
     const val SALT_LENGTH_BYTES = 16
+    const val MAX_SALT_LENGTH_BYTES = 64
 
     // --- Android Keystore ---
     const val ANDROID_KEYSTORE = "AndroidKeyStore"

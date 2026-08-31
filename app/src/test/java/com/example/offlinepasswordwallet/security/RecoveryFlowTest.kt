@@ -33,7 +33,7 @@ class RecoveryFlowTest {
         ctx = ApplicationProvider.getApplicationContext()
         File(ctx.filesDir, "vault").deleteRecursively()
         repo = VaultRepository(VaultFileStore(ctx))
-        limiter = RecoveryRateLimiter(ctx) { fakeNow }
+        limiter = RecoveryRateLimiter(ctx, wallClock = { fakeNow }, elapsedClock = { fakeNow })
         manager = RecoveryManager(repo, limiter)
         repo.createVault(master.copyOf(), answers)
         repo.upsertEntry(
@@ -87,7 +87,7 @@ class RecoveryFlowTest {
         assertTrue(manager.submitAnswers(answers) is RecoveryResult.LockedOut)
 
         // a fresh limiter instance (app restart) still sees the lockout
-        val restarted = RecoveryManager(repo, RecoveryRateLimiter(ctx) { fakeNow })
+        val restarted = RecoveryManager(repo, RecoveryRateLimiter(ctx, wallClock = { fakeNow }, elapsedClock = { fakeNow }))
         assertTrue(restarted.submitAnswers(answers) is RecoveryResult.LockedOut)
 
         // after the lockout window passes, correct answers work again

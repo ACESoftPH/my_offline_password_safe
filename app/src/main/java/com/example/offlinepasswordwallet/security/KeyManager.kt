@@ -2,7 +2,6 @@ package com.example.offlinepasswordwallet.security
 
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import com.example.offlinepasswordwallet.crypto.Base64Util
 import com.example.offlinepasswordwallet.crypto.CryptoConstants
@@ -11,6 +10,7 @@ import com.example.offlinepasswordwallet.data.model.EncryptedBlobDto
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.io.FileOutputStream
 import java.security.KeyStore
 import java.security.UnrecoverableKeyException
 import javax.crypto.Cipher
@@ -66,6 +66,11 @@ class KeyManager(context: Context) {
      * it to [finishEnable]. Any previous biometric key/blob is discarded first.
      */
     fun beginEnable(): Cipher {
+        // Generating a key under an existing alias replaces it, so any previously
+        // working biometric login is unavoidably invalidated from here on. Callers
+        // MUST turn the `biometricEnabled` setting off if the prompt is cancelled
+        // or fails, otherwise the UI would claim biometrics are on while no usable
+        // wrapped key exists.
         disable() // start clean
         val key = generateKeystoreKey()
         val cipher = Cipher.getInstance(CryptoConstants.AES_GCM_TRANSFORMATION)
@@ -77,14 +82,28 @@ class KeyManager(context: Context) {
      * Completes enabling: wraps [dek] with the biometric-authenticated [cipher]
      * and persists the blob. Call only after BiometricPrompt reported success for
      * the exact cipher returned by [beginEnable].
+     *
+     * The blob is written through a temp file + fsync + atomic rename so a crash
+     * mid-write can never leave a half-written `biometric.json` that parses but
+     * fails to decrypt.
      */
     fun finishEnable(cipher: Cipher, dek: SecretKey) {
         val dekBytes = dek.encoded
         try {
             val ct = cipher.doFinal(dekBytes)
             val blob = EncryptedBlob(iv = cipher.iv, ciphertext = ct)
+            val text = json.encodeToString(BiometricBlob.serializer(), BiometricBlob(blob.toDto()))
             blobFile.parentFile?.mkdirs()
-            blobFile.writeText(json.encodeToString(BiometricBlob.serializer(), BiometricBlob(blob.toDto())))
+            val temp = File(blobFile.parentFile, blobFile.name + ".tmp")
+            FileOutputStream(temp).use { out ->
+                out.write(text.toByteArray(Charsets.UTF_8))
+                out.flush()
+                out.fd.sync()
+            }
+            if (!temp.renameTo(blobFile)) {
+                temp.copyTo(blobFile, overwrite = true)
+                temp.delete()
+            }
             restrict(blobFile)
         } finally {
             dekBytes.fill(0)
@@ -120,7 +139,11 @@ class KeyManager(context: Context) {
                     GCMParameterSpec(CryptoConstants.GCM_TAG_LENGTH_BITS, blob.iv),
                 )
             }
-        } catch (e: KeyPermanentlyInvalidatedException) {
+        } catch (e: BiometricKeyInvalidatedException) {
+            throw e
+        } catch (e: Exception) {
+            // KeyPermanentlyInvalidatedException, bad IV length from a corrupt
+            // blob, provider errors — all mean "biometric login is unusable".
             throw BiometricKeyInvalidatedException(e)
         }
     }
@@ -128,16 +151,26 @@ class KeyManager(context: Context) {
     /**
      * Uses the biometric-authorized [cipher] to unwrap and return the DEK.
      *
-     * @throws BiometricKeyInvalidatedException on key invalidation surfaced late.
+     * Any failure here — key invalidation, a corrupt/rotated `biometric.json`
+     * whose GCM tag no longer verifies ([javax.crypto.AEADBadTagException]), a
+     * provider error — is reported as [BiometricKeyInvalidatedException] so the
+     * caller can disable biometrics and fall back to the master password. Nothing
+     * escapes as an unhandled exception: this runs inside the auto-launched
+     * unlock coroutine, where an escape would crash the app on every start.
+     *
+     * @throws BiometricKeyInvalidatedException on any unwrap failure.
      */
     fun unwrapDekAfterAuth(cipher: Cipher): SecretKey {
         val blob = readBlob()
         val dekBytes = try {
             cipher.doFinal(blob.ciphertext)
-        } catch (e: KeyPermanentlyInvalidatedException) {
+        } catch (e: Exception) {
             throw BiometricKeyInvalidatedException(e)
         }
         try {
+            if (dekBytes.size != CryptoConstants.DEK_LENGTH_BYTES) {
+                throw BiometricKeyInvalidatedException(null)
+            }
             return SecretKeySpec(dekBytes, CryptoConstants.AES_ALGORITHM)
         } finally {
             dekBytes.fill(0)
@@ -156,16 +189,34 @@ class KeyManager(context: Context) {
             }
         }
         runCatching { blobFile.delete() }
+        runCatching { File(blobFile.parentFile, blobFile.name + ".tmp").delete() }
     }
 
     // -------------------------------------------------------------------------
     // internals
     // -------------------------------------------------------------------------
 
+    /**
+     * Reads the wrapped-DEK blob. A missing/unparseable/garbled file is reported
+     * as [BiometricKeyInvalidatedException] rather than letting a
+     * `SerializationException` or Base64 `IllegalArgumentException` escape.
+     */
     private fun readBlob(): EncryptedBlob {
-        val text = blobFile.readText()
-        val parsed = json.decodeFromString(BiometricBlob.serializer(), text)
-        return EncryptedBlob.fromDto(parsed.wrappedDek)
+        if (!blobFile.isFile) throw BiometricNotConfiguredException()
+        return try {
+            val parsed = json.decodeFromString(BiometricBlob.serializer(), blobFile.readText())
+            val blob = EncryptedBlob.fromDto(parsed.wrappedDek)
+            if (blob.iv.size != CryptoConstants.GCM_IV_LENGTH_BYTES || blob.ciphertext.isEmpty()) {
+                throw BiometricKeyInvalidatedException(null)
+            }
+            blob
+        } catch (e: BiometricNotConfiguredException) {
+            throw e
+        } catch (e: BiometricKeyInvalidatedException) {
+            throw e
+        } catch (e: Exception) {
+            throw BiometricKeyInvalidatedException(e)
+        }
     }
 
     private fun generateKeystoreKey(): SecretKey {

@@ -159,4 +159,81 @@ class CsvTest {
         val preview = CsvImporter.parse("Title;;Website\na;b;c")
         assertEquals(listOf("Title", "Column 2", "Website"), preview.fieldNames)
     }
+
+    // --- regression: a quote may only OPEN a quoted section at field start -----
+
+    @Test
+    fun `a lone quote inside an unquoted field is literal data`() {
+        // Previously this switched the parser into quoted mode and swallowed every
+        // following delimiter and newline, merging the rest of the file into one field.
+        val rows = Csv.parse("site;pa\"ss;note\nrow2a;row2b;row2c")
+        assertEquals(listOf("site", "pa\"ss", "note"), rows[0])
+        assertEquals(listOf("row2a", "row2b", "row2c"), rows[1])
+        assertEquals(2, rows.size)
+    }
+
+    @Test
+    fun `unterminated mid-field quote does not eat the rest of the file`() {
+        val preview = CsvImporter.parse("Title;Password\nGmail;pa\"ss\nBank;other")
+        assertEquals(2, preview.entryCount)
+        assertEquals("pa\"ss", preview.entries[0].value("Password"))
+        assertEquals("other", preview.entries[1].value("Password"))
+    }
+
+    @Test
+    fun `a quote at field start still opens a quoted section`() {
+        assertEquals(listOf(listOf("a;b", "c")), Csv.parse("\"a;b\";c"))
+    }
+
+    @Test
+    fun `characters after a closing quote are appended, not re-quoted`() {
+        assertEquals(listOf(listOf("abtail", "next")), Csv.parse("\"ab\"tail;next"))
+    }
+
+    // --- regression: spreadsheet formula injection ----------------------------
+
+    @Test
+    fun `export neutralizes values a spreadsheet would execute`() {
+        val entries = listOf(
+            VaultEntry(fields = listOf(
+                VaultField("Title", "=1+1"),
+                VaultField("Comments", "@SUM(A1)"),
+                VaultField("Username", "+cmd"),
+                VaultField("Website", "-2+3"),
+            )),
+        )
+        val rows = Csv.parse(CsvExporter.export(entries))
+        val header = rows.first()
+        val data = rows[1]
+        assertEquals("'=1+1", data[header.indexOf("Title")])
+        assertEquals("'@SUM(A1)", data[header.indexOf("Comments")])
+        assertEquals("'+cmd", data[header.indexOf("Username")])
+        assertEquals("'-2+3", data[header.indexOf("Website")])
+    }
+
+    @Test
+    fun `formula neutralization round trips losslessly through our own importer`() {
+        val entries = listOf(
+            VaultEntry(fields = listOf(
+                VaultField("Title", "=1+1"),
+                VaultField("Password", "-secret-"),
+                VaultField("Comments", "not a formula"),
+            )),
+        )
+        val back = CsvImporter.parse(CsvExporter.export(entries)).entries.single()
+        assertEquals("=1+1", back.value("Title"))
+        assertEquals("-secret-", back.value("Password"))
+        assertEquals("not a formula", back.value("Comments"))
+    }
+
+    @Test
+    fun `an ordinary leading apostrophe is preserved`() {
+        assertEquals("'quoted", Csv.unescapeFormula("'quoted"))
+        assertEquals("'", Csv.unescapeFormula("'"))
+        val entries = listOf(VaultEntry(fields = listOf(VaultField("Title", "'apostrophe"))))
+        assertEquals(
+            "'apostrophe",
+            CsvImporter.parse(CsvExporter.export(entries)).entries.single().value("Title"),
+        )
+    }
 }

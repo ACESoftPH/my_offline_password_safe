@@ -39,7 +39,9 @@ object CsvImporter {
             .filterNot { row -> row.all { it.isEmpty() } } // skip fully blank lines
             .map { row ->
                 val fields = header.mapIndexed { i, name ->
-                    VaultField(name = name, value = row.getOrElse(i) { "" })
+                    // Reverses the spreadsheet formula-injection guard applied by
+                    // CsvExporter, so our own export -> import round trip is lossless.
+                    VaultField(name = name, value = Csv.unescapeFormula(row.getOrElse(i) { "" }))
                 }
                 VaultEntry(fields = fields)
             }
@@ -50,7 +52,7 @@ object CsvImporter {
     private fun normalizeHeader(raw: List<String>): List<String> {
         val seen = HashMap<String, Int>()
         return raw.mapIndexed { index, cellRaw ->
-            val base = cellRaw.trim().ifEmpty { "Column ${index + 1}" }
+            val base = Csv.unescapeFormula(cellRaw).trim().ifEmpty { "Column ${index + 1}" }
             val count = seen.getOrDefault(base.lowercase(), 0) + 1
             seen[base.lowercase()] = count
             if (count == 1) base else "$base ($count)"

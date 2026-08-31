@@ -83,6 +83,20 @@ fun SettingsScreen(
 
     var message by remember { mutableStateOf<String?>(null) }
 
+    /**
+     * Turns the setting off AND destroys any key material, so the toggle can never
+     * read "on" while no usable wrapped key exists. [beginEnable] necessarily
+     * replaces the previous Keystore key, so every failure path below must land
+     * here rather than silently leaving biometrics half-configured.
+     */
+    fun revokeBiometric(reason: String?) {
+        keyManager.disable()
+        scope.launch {
+            settingsRepo.setBiometricEnabled(false)
+            if (reason != null) message = reason
+        }
+    }
+
     fun enableBiometric() {
         val dek = ServiceLocator.vaultRepository.currentDek()
         if (dek == null) { message = "Unlock the vault first."; return }
@@ -93,7 +107,7 @@ fun SettingsScreen(
         val cipher = try {
             keyManager.beginEnable()
         } catch (e: Exception) {
-            message = e.message ?: "Could not prepare biometric key."
+            revokeBiometric(e.message ?: "Could not prepare the biometric key.")
             return
         }
         BiometricAuthenticator.authenticate(
@@ -109,15 +123,11 @@ fun SettingsScreen(
                             message = "Biometric login enabled."
                         }
                         .onFailure {
-                            keyManager.disable()
-                            message = it.message ?: "Failed to enable biometric login."
+                            revokeBiometric(it.message ?: "Failed to enable biometric login.")
                         }
                 }
             },
-            onError = { _, msg ->
-                keyManager.disable()
-                message = msg
-            },
+            onError = { _, msg -> revokeBiometric(msg) },
             onFailed = { },
         )
     }

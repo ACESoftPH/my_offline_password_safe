@@ -27,6 +27,13 @@ data class EncryptedVaultFile(
     val vaultId: String,
     val createdAtEpochMillis: Long,
     val modifiedAtEpochMillis: Long,
+    /**
+     * Monotonic write counter, incremented on every persisted change. From format
+     * version 2 it is part of the payload's AES-GCM associated data, so an old
+     * `payload` blob cannot be pasted back over a newer header without the tag
+     * check failing. Defaults to 1 when reading a v1 file that predates it.
+     */
+    val revision: Long = 1L,
 )
 
 @Serializable

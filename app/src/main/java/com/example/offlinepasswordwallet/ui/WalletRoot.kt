@@ -47,12 +47,24 @@ fun WalletRoot(activity: FragmentActivity) {
     }
 
     LaunchedEffect(vaultState) {
+        val current = navController.currentDestination?.route
         when (vaultState) {
-            is VaultState.Uninitialized -> navController.resetTo(Dest.SETUP)
-            is VaultState.Locked -> navController.resetTo(Dest.UNLOCK)
+            // Never yank the user out of a multi-step auth flow they are mid-way
+            // through (recovery reset, backup restore) — those screens finish by
+            // navigating themselves.
+            is VaultState.Uninitialized ->
+                if (current !in MULTI_STEP_AUTH_ROUTES) navController.resetTo(Dest.SETUP)
+
+            is VaultState.Locked ->
+                if (current !in MULTI_STEP_AUTH_ROUTES) navController.resetTo(Dest.UNLOCK)
+
             is VaultState.Unlocked -> {
-                val current = navController.currentDestination?.route
-                if (current == null || current in AUTH_ROUTES) {
+                // Only the terminal auth screens hand off automatically. RECOVERY
+                // still has a mandatory "choose a new master password" step after
+                // the recovery unlock succeeds — jumping to LIST here would destroy
+                // that screen and leave the DEK wrapped only under the forgotten
+                // password. RESTORE_BACKUP is the same shape.
+                if (current == null || current in HANDOFF_ROUTES) {
                     navController.resetTo(Dest.LIST)
                 }
             }
@@ -65,7 +77,11 @@ fun WalletRoot(activity: FragmentActivity) {
     }
 }
 
-private val AUTH_ROUTES = setOf(Dest.SETUP, Dest.UNLOCK, Dest.RECOVERY)
+/** Auth screens that are a single step and can hand off as soon as we are unlocked. */
+private val HANDOFF_ROUTES = setOf(Dest.SETUP, Dest.UNLOCK)
+
+/** Auth screens that own their own completion and must not be navigated away from. */
+private val MULTI_STEP_AUTH_ROUTES = setOf(Dest.RECOVERY, Dest.RESTORE_BACKUP)
 
 private fun NavHostController.resetTo(route: String) {
     if (currentDestination?.route == route) return
@@ -86,11 +102,22 @@ private fun NavGraphBuilder.authGraph(navController: NavHostController) {
         )
     }
     composable(Dest.RECOVERY) {
-        RecoveryScreen(onDone = { navController.popBackStack() }, onCancel = { navController.popBackStack() })
+        RecoveryScreen(
+            // The vault is already unlocked AND re-keyed at this point, so go
+            // straight to the vault rather than back to the lock screen.
+            onDone = { navController.resetTo(Dest.LIST) },
+            onCancel = {
+                // Answers may have unlocked the vault without a new master password
+                // being set. Re-lock so we never leave the vault open behind a
+                // half-finished reset.
+                ServiceLocator.vaultRepository.lock()
+                navController.resetTo(Dest.UNLOCK)
+            },
+        )
     }
     composable(Dest.RESTORE_BACKUP) {
         RestoreBackupScreen(
-            onDone = { navController.popBackStack() },
+            onDone = { navController.resetTo(Dest.LIST) },
             onCancel = { navController.popBackStack() },
         )
     }

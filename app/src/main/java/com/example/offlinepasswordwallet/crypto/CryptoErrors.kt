@@ -25,6 +25,20 @@ class VaultFormatException(message: String, cause: Throwable? = null) :
 class CryptoUnavailableException(message: String, cause: Throwable? = null) :
     VaultCryptoException(message, cause)
 
+/**
+ * The vault file on disk is older than the last write this device recorded — it
+ * was replaced with a stale copy (a restored file backup, a sync conflict, or
+ * deliberate tampering). Opening it would silently resurrect deleted or rotated
+ * credentials, so we refuse and tell the user instead.
+ */
+class VaultRollbackException(val storedRevision: Long, val fileRevision: Long) :
+    VaultCryptoException(
+        "The vault file on this device is older than the last saved version " +
+            "(found revision $fileRevision, expected at least $storedRevision). It may have " +
+            "been replaced with an out-of-date copy. Restore an encrypted backup instead of " +
+            "using this file.",
+    )
+
 /** The selected file is not an Offline Password Wallet encrypted backup. */
 class BackupFormatException(message: String, cause: Throwable? = null) :
     VaultCryptoException(message, cause)
