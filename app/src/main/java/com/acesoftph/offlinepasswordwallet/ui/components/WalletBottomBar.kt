@@ -32,6 +32,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.automirrored.filled.List
 
+/**
+ * Space a scrolling screen must leave at the end of its content so the last item
+ * clears the floating bar.
+ *
+ * The bar floats OVER the bottom of the content area rather than sitting in the
+ * layout, so Scaffold's reported bottom padding is not enough on its own: without
+ * this the final row ends up sliced by the bar, and because the scroll range is
+ * exactly the overflow there is no travel left to rescue it.
+ */
+val BottomBarClearance: androidx.compose.ui.unit.Dp = 128.dp
+
 /** The three top-level destinations reachable from the bottom bar. */
 enum class WalletTab(val label: String, val icon: ImageVector) {
     ENTRIES("Entries", Icons.AutoMirrored.Filled.List),

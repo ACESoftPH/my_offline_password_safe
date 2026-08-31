@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -46,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.acesoftph.offlinepasswordwallet.di.ServiceLocator
 import com.acesoftph.offlinepasswordwallet.password.PasswordGenerator
 import com.acesoftph.offlinepasswordwallet.settings.AppSettings
+import com.acesoftph.offlinepasswordwallet.ui.components.BottomBarClearance
 import com.acesoftph.offlinepasswordwallet.ui.components.ColoredPassword
 import com.acesoftph.offlinepasswordwallet.ui.components.SectionHeader
 import com.acesoftph.offlinepasswordwallet.ui.components.StrengthMeter
@@ -294,7 +297,7 @@ fun PasswordGeneratorScreen(
                     }
                 },
             )
-            Text("", Modifier.padding(bottom = 24.dp))
+            Spacer(Modifier.height(BottomBarClearance))
         }
     }
 }

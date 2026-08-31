@@ -47,6 +47,7 @@ import com.acesoftph.offlinepasswordwallet.password.PasswordGenerator
 import com.acesoftph.offlinepasswordwallet.security.BiometricAuthenticator
 import com.acesoftph.offlinepasswordwallet.settings.AppSettings
 import com.acesoftph.offlinepasswordwallet.settings.AutoLockTimeout
+import com.acesoftph.offlinepasswordwallet.ui.components.BottomBarClearance
 import com.acesoftph.offlinepasswordwallet.ui.components.SectionHeader
 import com.acesoftph.offlinepasswordwallet.ui.components.SettingRow
 import com.acesoftph.offlinepasswordwallet.ui.components.WalletCard
@@ -296,7 +297,7 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 110.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = BottomBarClearance),
             )
         }
     }

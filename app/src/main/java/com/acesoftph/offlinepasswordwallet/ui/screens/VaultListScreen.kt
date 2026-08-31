@@ -42,6 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.acesoftph.offlinepasswordwallet.data.model.VaultEntry
 import com.acesoftph.offlinepasswordwallet.data.repository.VaultState
 import com.acesoftph.offlinepasswordwallet.di.ServiceLocator
+import com.acesoftph.offlinepasswordwallet.ui.components.BottomBarClearance
 import com.acesoftph.offlinepasswordwallet.ui.components.EntryAvatar
 import com.acesoftph.offlinepasswordwallet.ui.components.SectionHeader
 import com.acesoftph.offlinepasswordwallet.ui.components.WalletCard
@@ -135,7 +136,7 @@ fun VaultListScreen(
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().testTag("entry_list"),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 120.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = BottomBarClearance),
                 ) {
                     grouped.forEach { (initial, group) ->
                         item(key = "hdr_$initial") { SectionHeader(initial) }
