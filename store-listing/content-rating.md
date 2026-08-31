@@ -15,7 +15,7 @@ utility with no content, no communication features, and no network access at all
 
 | Field | Answer |
 |---|---|
-| Email address | `offlinepasswordwallet@gmail.com` |
+| Email address | `walletp85@gmail.com` |
 | Category | **Utility, Productivity, Communication, or Other** |
 
 > Pick the *Utility / Productivity / Other* category, **not** "Reference, News, or

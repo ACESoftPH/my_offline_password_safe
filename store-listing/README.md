@@ -68,16 +68,15 @@ never receives biometric data.
 |---|---|
 | Privacy policy | `https://aldinson.github.io/my_offline_password_safe/` |
 | Support website (optional) | `https://aldinson.github.io/my_offline_password_safe/support.html` |
-| Support email (required, shown publicly) | `offlinepasswordwallet@gmail.com` |
+| Support email (required, shown publicly) | `walletp85@gmail.com` |
 
 Both pages live in `docs/` and are served by GitHub Pages from `main` / `docs`.
 They are self-contained — no fonts, CDNs, scripts or trackers — so the privacy
 policy does not contradict its own contents.
 
-> **Register `offlinepasswordwallet@gmail.com` before you publish.** It is
-> referenced by the support page, the privacy policy and the Play listing. If you
-> use a different address, change it in `docs/support.html`, `docs/index.html`
-> and this file.
+> `walletp85@gmail.com` is registered and in use. It appears in
+> `docs/support.html`, `docs/index.html`, `content-rating.md`,
+> `closed-testing.md` and this file — change all five together if it ever moves.
 
 ## Regenerating
 

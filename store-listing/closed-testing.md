@@ -22,7 +22,7 @@ to run a closed test before they can apply for production access: at least
 
 ## Before you start
 
-- [ ] `offlinepasswordwallet@gmail.com` registered (support page, privacy policy and listing all point at it)
+- [x] `walletp85@gmail.com` registered (support page, privacy policy and listing all point at it)
 - [ ] Store listing complete — icon, feature graphic, screenshots, descriptions (`README.md`)
 - [ ] Content rating questionnaire submitted (`content-rating.md`)
 - [ ] Data safety form submitted — no data collected, no data shared
@@ -130,7 +130,7 @@ Review of this application typically takes a few days.
 >
 > Tell me anything confusing, ugly, slow, or broken — especially anything where
 > you weren't sure what would happen. Reply here, or email
-> offlinepasswordwallet@gmail.com.
+> walletp85@gmail.com.
 
 ---
 
