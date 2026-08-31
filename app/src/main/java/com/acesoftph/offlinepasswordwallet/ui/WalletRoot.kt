@@ -100,13 +100,24 @@ private fun NavHostController.resetTo(route: String) {
     }
 }
 
-/** Switches top-level tab without stacking duplicates of the three roots. */
+/**
+ * Switches top-level tab, keeping LIST as the root of the vault section.
+ *
+ * Everything above LIST is popped and the new tab pushed, so the stack is at most
+ * [LIST, tab] and the system back button returns to Entries rather than walking
+ * a history of tab presses.
+ *
+ * Deliberately no saveState/restoreState. Those only behave when popping to the
+ * graph's start destination, which here is an auth route we must never return to.
+ * Popping LIST *inclusively* while saving its state and then navigating straight
+ * back to it left the NavHost with no current destination at all — a blank white
+ * screen that only an app restart cleared.
+ */
 private fun NavHostController.switchTab(route: String) {
     if (currentDestination?.route == route) return
     navigate(route) {
-        popUpTo(Dest.LIST) { inclusive = route == Dest.LIST; saveState = true }
+        popUpTo(Dest.LIST) { inclusive = false }
         launchSingleTop = true
-        restoreState = true
     }
 }
 

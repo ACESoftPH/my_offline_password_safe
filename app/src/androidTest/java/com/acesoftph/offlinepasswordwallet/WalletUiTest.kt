@@ -105,6 +105,41 @@ class WalletUiTest {
         rule.onNodeWithTag("restore_passphrase").assertIsDisplayed()
     }
 
+    /**
+     * Regression: switching to Generate or Settings and back to Entries used to
+     * leave the NavHost with no current destination — a blank white screen that
+     * only an app restart cleared. Every direction is exercised because the
+     * failure only appeared on the return leg.
+     */
+    @Test
+    fun switchingBottomBarTabsInEveryDirectionKeepsAScreenOnShow() {
+        completeSetup()
+
+        fun tab(name: String) {
+            rule.onNodeWithContentDescription(name).performClick()
+            rule.waitForIdle()
+        }
+
+        for (destination in listOf("Generate", "Entries", "Settings", "Entries", "Generate", "Settings", "Entries")) {
+            tab(destination)
+            // Whatever tab we land on, the screen must have rendered something.
+            val rendered = runCatching {
+                rule.onNodeWithTag("entry_list").assertIsDisplayed(); true
+            }.getOrElse {
+                runCatching { rule.onNodeWithTag("search_field").assertIsDisplayed(); true }
+                    .getOrElse {
+                        runCatching { rule.onNodeWithTag("generated_password").assertIsDisplayed(); true }
+                            .getOrElse {
+                                runCatching {
+                                    rule.onNodeWithTag("biometric_switch").assertIsDisplayed(); true
+                                }.getOrDefault(false)
+                            }
+                    }
+            }
+            assert(rendered) { "blank screen after selecting the $destination tab" }
+        }
+    }
+
     @Test
     fun lockThenUnlockWithMasterPassword() {
         completeSetup()
