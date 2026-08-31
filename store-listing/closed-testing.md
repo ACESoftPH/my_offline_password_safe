@@ -67,7 +67,7 @@ but can take days for a first submission — start the clock early.
 Once the release is live on the track, share:
 
 ```
-https://play.google.com/apps/testing/com.aldinson.offlinepasswordwallet
+https://play.google.com/apps/testing/com.acesoft.offlinepasswordwallet
 ```
 
 Each tester must open it **with the Google account you listed**, press *Become a
@@ -110,7 +110,7 @@ Review of this application typically takes a few days.
 >
 > **To join:**
 > 1. Open this link on your phone, signed in with the Google account you gave me:
->    https://play.google.com/apps/testing/com.aldinson.offlinepasswordwallet
+>    https://play.google.com/apps/testing/com.acesoft.offlinepasswordwallet
 > 2. Tap **Become a tester**, then install from Play.
 > 3. Please **stay opted in for at least two weeks** — Google requires that
 >    before the app can be published. I'll let you know when it's done.

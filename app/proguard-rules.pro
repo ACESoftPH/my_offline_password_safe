@@ -15,8 +15,8 @@
     static <1>$Companion Companion;
     kotlinx.serialization.KSerializer serializer(...);
 }
--keep,includedescriptorclasses class com.aldinson.offlinepasswordwallet.**$$serializer { *; }
--keepclassmembers class com.aldinson.offlinepasswordwallet.** {
+-keep,includedescriptorclasses class com.acesoft.offlinepasswordwallet.**$$serializer { *; }
+-keepclassmembers class com.acesoft.offlinepasswordwallet.** {
     *** Companion;
 }
 
