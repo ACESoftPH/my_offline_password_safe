@@ -34,79 +34,13 @@ you prefer to upload the native captures.
 7. **Custom fields** — add/edit entry, password strength meter
 8. **Reset master password** — the five-question flow
 
-## Suggested listing text
+## Listing text
 
-**App name** (30 char limit — 23 used)
-
-```
-Offline Password Wallet
-```
-
-**Short description** (80 char limit — 70 used)
-
-```
-Encrypted password vault. No account, no cloud, no internet permission.
-```
-
-**Full description** (4000 char limit)
-
-```
-Offline Password Wallet keeps your passwords in a single encrypted file on your
-phone. There is no server, no account to create, and no sync. The app does not
-request the INTERNET permission at all, so it cannot send your data anywhere —
-that is enforced by Android, not just promised in a description.
-
-ENCRYPTION
-• Your vault is sealed with AES-256-GCM authenticated encryption.
-• Your master password is turned into a key with PBKDF2-HMAC-SHA256 at 600,000
-  iterations, and is never stored anywhere, in any form.
-• Every save uses a fresh random nonce, and tampering with the vault file is
-  detected rather than silently accepted.
-
-WHAT YOU CAN DO
-• Store entries with Title, Category, Username, Password, Website and Comments.
-• Add as many custom fields as you like — PIN, account number, recovery email,
-  server, port, anything.
-• Search by title, category, username, website and custom fields.
-• Copy any field with one tap. The clipboard is flagged sensitive and cleared
-  automatically after a delay you choose.
-• Generate strong passwords: adjustable length, optional symbols from a fixed
-  safe set, every character from a cryptographically secure random source.
-• Show or hide passwords; copying always copies the real value, never the mask.
-
-LOCKING
-• Unlock with your master password, or optionally with your fingerprint or face
-  using Android's own biometric system — the app never sees your biometric data.
-• The vault locks itself after a period of inactivity that you set, and also
-  when you leave the app for longer than that.
-• Screenshots and screen recording are blocked by default.
-
-IF YOU FORGET YOUR MASTER PASSWORD
-A correctly built password manager cannot show you your old master password,
-because it never stores it. Instead you answer five security questions to
-authorise setting a NEW master password. Your entries are preserved, and wrong
-answers are rate-limited.
-
-BACKUP AND TRANSFER
-• Export an encrypted backup file protected by its own passphrase, and restore
-  it on this phone or a new one.
-• Import and export semicolon-delimited CSV for moving between password
-  managers. CSV is plain text by design, and the app says so clearly and asks
-  you to confirm before it writes one.
-
-WHAT THIS APP DOES NOT DO
-No ads. No analytics. No trackers. No cloud backup. No account. Nothing leaves
-your device unless you explicitly export a file yourself.
-
-HONEST LIMITATIONS
-No password manager can protect you if your device itself is compromised, if
-malware has enough privileges, if you export a plaintext CSV and then expose it,
-if your master password is weak, or if someone guesses your security answers.
-Because your data never leaves your phone, there is also no way for anyone —
-including the developer — to recover it for you. Take an encrypted backup.
-
-Open source: https://github.com/aldinson/my_offline_password_safe
-```
+App name, short description, full description and release notes live in
+**[listing-text.md](listing-text.md)** — paste-ready, with the Play character
+limits verified by `check-lengths.py`. They are kept in one place on purpose:
+this file previously carried a second copy, and the two drifted the moment the
+password mask changed.
 
 ## Content rating
 
