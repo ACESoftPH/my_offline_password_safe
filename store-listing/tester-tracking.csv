@@ -1,0 +1,16 @@
+name,email,invited_on,opted_in_on,confirmed_installed,still_opted_in,feedback_received,notes
+Example Person,tester01@example.com,2026-09-01,2026-09-01,yes,yes,yes,"Found the CSV import confusing at first"
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,

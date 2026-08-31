@@ -113,6 +113,13 @@ Open source: https://github.com/aldinson/my_offline_password_safe
 See **[content-rating.md](content-rating.md)** for every questionnaire answer,
 the expected ratings, and the target-audience choice.
 
+## Closed testing
+
+See **[closed-testing.md](closed-testing.md)** for the Play Console steps, the
+message to send testers, and the release notes. `testers.csv` is the email list
+to upload; `tester-tracking.csv` is your own record of who actually opted in,
+which Play does not show you per-person.
+
 ## Data safety form
 
 The answer to every collection question is **no**. The app collects nothing,
