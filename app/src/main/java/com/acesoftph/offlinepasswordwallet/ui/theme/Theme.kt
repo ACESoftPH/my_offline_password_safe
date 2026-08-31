@@ -12,8 +12,6 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 
 /*
@@ -150,14 +148,16 @@ private val DarkPalette = WalletPalette(
 
 val LocalWalletPalette = staticCompositionLocalOf { DarkPalette }
 
-private val AppTypography = Typography().let { base ->
-    base.copy(
-        titleLarge = base.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-        titleMedium = base.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-        labelLarge = base.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-        labelMedium = base.labelMedium.copy(letterSpacing = 0.8.sp, fontWeight = FontWeight.Medium),
-    )
-}
+/**
+ * The platform's Material 3 type scale, unmodified.
+ *
+ * `Typography()` resolves to [androidx.compose.ui.text.font.FontFamily.Default],
+ * which is whatever font the device ships (Roboto on stock Android, the OEM's
+ * face elsewhere), and every size in it is expressed in `sp`, so the app follows
+ * the user's Settings > Display > Font size choice — including Android 14's
+ * non-linear scaling. Nothing here overrides the face, the weights or the sizes.
+ */
+private val AppTypography = Typography()
 
 @Composable
 fun OfflinePasswordWalletTheme(

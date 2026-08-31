@@ -47,7 +47,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.acesoftph.offlinepasswordwallet.password.PasswordStrength
 import com.acesoftph.offlinepasswordwallet.password.StrengthResult
 import com.acesoftph.offlinepasswordwallet.ui.theme.LocalWalletPalette
@@ -211,7 +210,7 @@ fun EntryAvatar(label: String, modifier: Modifier = Modifier, size: androidx.com
 fun ColoredPassword(
     password: String,
     modifier: Modifier = Modifier,
-    fontSize: androidx.compose.ui.unit.TextUnit = 22.sp,
+    style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.titleLarge,
 ) {
     val palette = LocalWalletPalette.current
     val text: AnnotatedString = buildAnnotatedString {
@@ -224,13 +223,15 @@ fun ColoredPassword(
             withStyle(SpanStyle(color = color)) { append(c) }
         }
     }
+    // Size and weight come from the type scale, so this grows with the user's
+    // font-size setting like everything else. Only the family is pinned, to the
+    // device's own monospace face: a password is transcribed character by
+    // character, and a proportional font makes l/1/I and O/0 hard to tell apart.
     Text(
         text = text,
         modifier = modifier,
+        style = style,
         fontFamily = FontFamily.Monospace,
-        fontSize = fontSize,
-        lineHeight = fontSize * 1.35f,
-        fontWeight = FontWeight.Medium,
     )
 }
 
