@@ -208,13 +208,20 @@ fun EntryEditScreen(
     if (showGenerator) {
         AlertDialog(
             onDismissRequest = { showGenerator = false },
-            confirmButton = {},
+            confirmButton = {
+                TextButton(onClick = { showGenerator = false }) { Text("Cancel") }
+            },
             title = { Text("Generate password") },
             text = {
-                GeneratorPanel(onUse = { generated ->
-                    fields.firstOrNull { it.sensitive }?.value = generated
-                    showGenerator = false
-                })
+                // The panel is taller than a dialog at larger font sizes, and the
+                // dialog's text slot does not scroll on its own, which previously
+                // left the character-set rows unreachable.
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    GeneratorPanel(onUse = { generated ->
+                        fields.firstOrNull { it.sensitive }?.value = generated
+                        showGenerator = false
+                    })
+                }
             },
         )
     }

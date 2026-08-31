@@ -18,7 +18,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -107,24 +107,46 @@ fun GeneratorPanel(
                 )
                 StrengthMeter(generated, modifier = Modifier.padding(top = 14.dp))
 
+                // Regenerate is icon-only: as a labelled button competing for half
+                // the row it wrapped its text and threw the row out of alignment at
+                // anything above the default font size.
+                //
+                // The primary action depends on why the panel is open. Embedded in
+                // the entry editor there is somewhere for the password to go, so it
+                // is "Use"; standing alone as a tab there is not, so it is "Copy".
                 Row(
                     Modifier.fillMaxWidth().padding(top = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    FilledTonalButton(
+                    FilledTonalIconButton(
                         onClick = { regen() },
-                        modifier = Modifier.weight(1f).testTag("generate_again"),
+                        modifier = Modifier.size(52.dp).testTag("generate_again"),
                     ) {
-                        Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Text("  Regenerate")
+                        Icon(
+                            Icons.Filled.Refresh,
+                            contentDescription = "Regenerate",
+                            modifier = Modifier.size(22.dp),
+                        )
                     }
-                    Button(
-                        onClick = { onCopied?.invoke(generated) },
-                        enabled = onCopied != null && generated.isNotEmpty(),
-                        modifier = Modifier.weight(1f).testTag("copy_password"),
-                    ) {
-                        Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Text("  Copy")
+                    if (onUse != null) {
+                        Button(
+                            onClick = { onUse(generated) },
+                            enabled = generated.isNotEmpty(),
+                            modifier = Modifier.weight(1f).height(52.dp).testTag("use_password"),
+                        ) {
+                            Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Text("  Use")
+                        }
+                    } else {
+                        Button(
+                            onClick = { onCopied?.invoke(generated) },
+                            enabled = onCopied != null && generated.isNotEmpty(),
+                            modifier = Modifier.weight(1f).height(52.dp).testTag("copy_password"),
+                        ) {
+                            Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Text("  Copy")
+                        }
                     }
                 }
             }
@@ -181,12 +203,6 @@ fun GeneratorPanel(
             }
         }
 
-        if (onUse != null) {
-            Button(
-                onClick = { onUse(generated) },
-                modifier = Modifier.fillMaxWidth().padding(top = 18.dp).testTag("use_password"),
-            ) { Text("Use this password") }
-        }
     }
 }
 
