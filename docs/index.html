@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — Offline Password Wallet</title>
+<meta name="description" content="Privacy policy for the Offline Password Wallet Android app. The app collects no data and has no internet permission.">
+<!--
+  Deliberately self-contained: no web fonts, no CDN, no analytics, no third-party
+  requests of any kind. A privacy policy that phones out to other servers to
+  render itself would undercut its own contents.
+-->
+<style>
+  :root{
+    --bg:#fbfdf7; --surface:#ffffff; --text:#15211a; --muted:#4d6357;
+    --line:#dbe5dd; --accent:#1b4332; --accent-soft:#e8f3ec;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#101512; --surface:#171f1a; --text:#e6ede8; --muted:#a2b5aa;
+      --line:#26332c; --accent:#7bdb89; --accent-soft:#16241b;
+    }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:0 20px 96px;
+    background:var(--bg); color:var(--text);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:760px; margin:0 auto}
+  header{padding:56px 0 8px; border-bottom:1px solid var(--line); margin-bottom:32px}
+  .badge{
+    display:inline-block; font-size:12px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--accent); background:var(--accent-soft); border-radius:999px;
+    padding:5px 12px; font-weight:600; margin-bottom:16px;
+  }
+  h1{font-size:clamp(28px,5vw,38px); line-height:1.2; margin:0 0 10px; letter-spacing:-.02em}
+  h2{font-size:20px; margin:40px 0 10px; letter-spacing:-.01em}
+  h2 .n{color:var(--muted); font-weight:600; margin-right:8px}
+  .meta{color:var(--muted); font-size:14px; margin:0}
+  p,li{color:var(--text)}
+  a{color:var(--accent)}
+  ul{padding-left:22px}
+  li{margin:6px 0}
+  code{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.9em;
+    background:var(--accent-soft); padding:1px 5px; border-radius:4px;
+  }
+  .callout{
+    background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--accent);
+    border-radius:10px; padding:18px 20px; margin:28px 0;
+  }
+  .callout p{margin:0}
+  .callout strong{font-size:17px}
+  table{border-collapse:collapse; width:100%; margin:16px 0; font-size:15px; display:block; overflow-x:auto}
+  th,td{border:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+  th{background:var(--accent-soft); font-weight:600; white-space:nowrap}
+  footer{margin-top:56px; padding-top:24px; border-top:1px solid var(--line); color:var(--muted); font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="badge">Privacy Policy</div>
+  <h1>Offline Password Wallet</h1>
+  <p class="meta">
+    Android application ID <code>com.aldinson.offlinepasswordwallet</code><br>
+    Effective 31 August 2026 · Version 1.0.0
+  </p>
+</header>
+
+<div class="callout">
+  <p><strong>This app collects no data whatsoever.</strong></p>
+  <p style="margin-top:8px">
+    It has no account system, no servers, and no analytics. It does not request
+    the Android <code>INTERNET</code> permission, so it is technically incapable
+    of transmitting anything anywhere — that restriction is enforced by the
+    Android operating system, not merely promised here.
+  </p>
+</div>
+
+<h2><span class="n">1.</span> Who this policy applies to</h2>
+<p>
+  This policy covers the Android application <strong>Offline Password Wallet</strong>
+  (<code>com.aldinson.offlinepasswordwallet</code>), distributed through Google
+  Play. In this document, “the app” means that application, and “you” means the
+  person using it on their own device.
+</p>
+
+<h2><span class="n">2.</span> Data collected</h2>
+<p><strong>None.</strong> Specifically, the app does not collect, transmit, sell, or share:</p>
+<ul>
+  <li>Names, email addresses, phone numbers, or any other contact details</li>
+  <li>Account credentials, because there is no account to create or sign in to</li>
+  <li>Device identifiers, advertising IDs, or installation IDs</li>
+  <li>Location data of any kind, precise or approximate</li>
+  <li>Usage, diagnostic, performance, or crash-reporting data</li>
+  <li>Contacts, photos, files, messages, or calendar data</li>
+  <li>Anything you type into or store in the app</li>
+</ul>
+<p>
+  There is no server to send data to, and no code in the app that would do so.
+</p>
+
+<h2><span class="n">3.</span> The data you create</h2>
+<p>
+  Everything you save — entry titles, usernames, passwords, websites, comments,
+  and any custom fields you add — is stored in a single encrypted file in the
+  app's private storage area on your device. It is encrypted with AES-256-GCM
+  under a key derived from your master password using PBKDF2-HMAC-SHA256.
+</p>
+<p>
+  Your master password and your five security-question answers are
+  <strong>never stored</strong>, in any form, anywhere. Only cryptographic keys
+  derived from them are used, and those keys exist only in memory while the vault
+  is unlocked.
+</p>
+<p>
+  This data never leaves your device unless you personally choose to export it
+  (see section 6). The developer has no access to it and no ability to read,
+  recover, or reset it.
+</p>
+
+<h2><span class="n">4.</span> Network access</h2>
+<p>
+  The app declares <strong>no network permissions</strong>. You can verify this
+  yourself: on the Google Play listing, under “App info”, the permissions list
+  contains no internet or network access entry. Without the
+  <code>INTERNET</code> permission, Android blocks the app from opening any
+  network connection at all.
+</p>
+
+<h2><span class="n">5.</span> Permissions the app does request</h2>
+<table>
+  <tr><th>Permission</th><th>Why</th></tr>
+  <tr>
+    <td><code>USE_BIOMETRIC</code><br><code>USE_FINGERPRINT</code></td>
+    <td>
+      To offer optional fingerprint or face unlock. Both are required by
+      Android's own <code>BiometricPrompt</code> component. Biometric matching is
+      performed entirely by the Android operating system; the app never receives,
+      sees, or stores your fingerprint or face data. This feature is off by
+      default and can be turned off at any time in Settings.
+    </td>
+  </tr>
+</table>
+<p>
+  Choosing files for import and export uses Android's Storage Access Framework,
+  which grants access only to the single file you pick, and therefore requires no
+  storage permission.
+</p>
+
+<h2><span class="n">6.</span> Files you export yourself</h2>
+<p>
+  The app can write two kinds of file, and only ever when you explicitly ask it to:
+</p>
+<ul>
+  <li>
+    <strong>An encrypted backup</strong> (<code>.opwbackup</code>), protected by a
+    separate passphrase that you choose.
+  </li>
+  <li>
+    <strong>A plaintext CSV export</strong>, for moving your data to another
+    password manager. <strong>CSV files are not encrypted.</strong> Anyone who
+    obtains that file can read every password in it. The app warns you and
+    requires explicit confirmation before writing one.
+  </li>
+</ul>
+<p>
+  In both cases the file is written only to the location you select, the app
+  keeps no copy, and nothing is uploaded anywhere. Once a file leaves the app,
+  keeping it safe is up to you.
+</p>
+
+<h2><span class="n">7.</span> Advertising, analytics, and tracking</h2>
+<p>
+  There are none. The app contains no advertising SDK, no analytics SDK, no
+  crash-reporting SDK, and no tracking or fingerprinting code. No third-party
+  service receives any information about you or your use of the app, because the
+  app communicates with no third-party service.
+</p>
+
+<h2><span class="n">8.</span> Backups</h2>
+<p>
+  Android's automatic cloud backup and device-to-device transfer are
+  <strong>disabled</strong> for this app. Your encrypted vault is deliberately not
+  copied to Google Drive or any other backup destination. If you want your data
+  on another device, use the app's own encrypted backup export.
+</p>
+
+<h2><span class="n">9.</span> Children</h2>
+<p>
+  The app is a general-purpose utility, is not directed at children, and collects
+  no data from anyone, including children under 13.
+</p>
+
+<h2><span class="n">10.</span> Retention and deletion</h2>
+<p>
+  Because nothing is collected, there is nothing held about you to retain or
+  delete. Your vault lives on your device for as long as you keep it.
+  <strong>Uninstalling the app permanently deletes it</strong>, and because the
+  data exists nowhere else, it cannot be recovered by you, by the developer, or
+  by anyone else. Export an encrypted backup before uninstalling or changing
+  phones.
+</p>
+
+<h2><span class="n">11.</span> Your rights</h2>
+<p>
+  Privacy laws such as the GDPR and the CCPA give you rights to access, correct,
+  port, and delete personal data that a company holds about you, and to opt out
+  of its sale. No personal data about you is collected, processed, stored, or
+  sold by this app or its developer, so there is nothing held on our side for
+  those rights to apply to. Your data is entirely in your own possession and
+  under your own control at all times.
+</p>
+
+<h2><span class="n">12.</span> Security, honestly stated</h2>
+<p>
+  The app uses established cryptography and does not roll its own. It nevertheless
+  cannot protect your data if your device itself is compromised, if malware runs
+  with sufficient privileges, if you export a plaintext CSV and then expose it, if
+  your master password is weak, or if someone guesses your security-question
+  answers. No password manager can. The full security model and its limitations
+  are documented in the project's README.
+</p>
+
+<h2><span class="n">13.</span> Changes to this policy</h2>
+<p>
+  If this policy changes, the revised version will be published at this address
+  with an updated effective date. Because the app collects no data, any change is
+  expected to be a clarification rather than a change in practice.
+</p>
+
+<h2><span class="n">14.</span> Contact</h2>
+<p>
+  Questions about this policy or about the app can be raised publicly at
+  <a href="https://github.com/aldinson/my_offline_password_safe/issues">the project's issue tracker</a>.
+  The app's Google Play listing also carries a support email address.
+</p>
+
+<footer>
+  Offline Password Wallet · Privacy Policy · Effective 31 August 2026<br>
+  This page loads no external resources and sets no cookies.
+</footer>
+
+</div>
+</body>
+</html>
