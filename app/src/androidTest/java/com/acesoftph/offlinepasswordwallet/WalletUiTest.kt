@@ -4,6 +4,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -138,6 +140,24 @@ class WalletUiTest {
             }
             assert(rendered) { "blank screen after selecting the $destination tab" }
         }
+    }
+
+    /**
+     * Back on the vault root must not fall through to the auth destination that
+     * sits beneath it — doing so used to display "The vault is locked" while the
+     * vault was still open. The first press arms an exit instead.
+     */
+    @Test
+    fun firstBackOnTheVaultArmsAnExitInsteadOfShowingTheLockScreen() {
+        completeSetup()
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+            .runOnMainSync { rule.activity.onBackPressedDispatcher.onBackPressed() }
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Press back again to lock and exit").assertIsDisplayed()
+        // Still on the vault, and no lock screen was revealed.
+        rule.onNodeWithTag("add_entry_fab").assertIsDisplayed()
+        rule.onAllNodesWithText("The vault is locked.").assertCountEquals(0)
     }
 
     @Test

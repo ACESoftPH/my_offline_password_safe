@@ -167,6 +167,14 @@ private fun NavGraphBuilder.vaultGraph(navController: NavHostController, activit
         VaultListScreen(
             onOpenEntry = { id -> navController.navigate(Dest.detail(id)) },
             onAddEntry = { navController.navigate(Dest.edit(Dest.NEW_ENTRY_ID)) },
+            // Leaving via back is a clear signal the user is done, so drop the
+            // decrypted vault before the activity goes away. Without this the
+            // process can survive and a relaunch inside the auto-lock window
+            // would walk straight back into decrypted data with no auth.
+            onLockAndExit = {
+                ServiceLocator.vaultRepository.lock()
+                activity.finish()
+            },
             bottomBar = { bar(WalletTab.ENTRIES) },
         )
     }

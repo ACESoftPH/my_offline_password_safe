@@ -1,5 +1,6 @@
 package com.acesoftph.offlinepasswordwallet.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +25,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -53,15 +56,35 @@ import kotlinx.coroutines.launch
 fun VaultListScreen(
     onOpenEntry: (String) -> Unit,
     onAddEntry: () -> Unit,
+    onLockAndExit: () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
+    val snackbar = remember { SnackbarHostState() }
     val state by ServiceLocator.vaultRepository.state.collectAsStateWithLifecycle()
     val entries = (state as? VaultState.Unlocked)?.entries ?: emptyList()
 
     var query by remember { mutableStateOf("") }
     val filtered = remember(entries, query) { filterEntries(entries, query) }
     val grouped = remember(filtered) { groupByInitial(filtered) }
+
+    // Back on the vault root must not fall through to the auth destination
+    // sitting beneath it — that would show "The vault is locked" while it is
+    // still open. Instead, the first press arms an exit and the second one takes
+    // it, locking the vault on the way out so reopening needs the master password
+    // or biometrics again. The snackbar's own lifetime is the arming window.
+    var exitArmed by remember { mutableStateOf(false) }
+    BackHandler {
+        if (exitArmed) {
+            onLockAndExit()
+        } else {
+            exitArmed = true
+            scope.launch {
+                snackbar.showSnackbar("Press back again to lock and exit")
+                exitArmed = false
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -88,6 +111,7 @@ fun VaultListScreen(
             }
         },
         bottomBar = bottomBar,
+        snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         Column(
             Modifier
