@@ -272,7 +272,7 @@ fun ExportCsvScreen(onBack: () -> Unit) {
             }
             Button(
                 enabled = acknowledged && entries.isNotEmpty() && !done,
-                onClick = { creator.launch("offline-password-wallet-export.csv") },
+                onClick = { creator.launch("lock-nest-export.csv") },
                 modifier = Modifier.fillMaxWidth().testTag("do_export"),
             ) { Text("Choose location & export") }
 

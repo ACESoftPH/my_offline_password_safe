@@ -11,17 +11,17 @@ Verify lengths after any edit: `python store-listing/check-lengths.py`
 
 | Field | Limit | Used |
 |---|---|---|
-| App name | 30 | 23 |
+| App name | 30 | 9 |
 | Short description | 80 | 71 |
-| Full description | 4000 | 3466 |
-| Release notes (per language) | 500 | 477 |
+| Full description | 4000 | 3453 |
+| Release notes (per language) | 500 | 463 |
 
 ---
 
 ## App name
 
 ```
-Offline Password Wallet
+Lock Nest
 ```
 
 ## Short description
@@ -35,7 +35,7 @@ Encrypted password vault. No account, no cloud, no internet permission.
 ## Full description
 
 ```
-Offline Password Wallet keeps your passwords in a single encrypted file on your own phone. There is no account to create, no server, and no sync. The app does not request Android's internet permission at all, so it cannot send your data anywhere — you can verify that yourself in the Permissions section of this listing.
+Lock Nest keeps your passwords in a single encrypted file on your own phone. There is no account to create, no server, and no sync. The app does not request Android's internet permission at all, so it cannot send your data anywhere — you can verify that yourself in the Permissions section of this listing.
 
 HOW YOUR DATA IS PROTECTED
 
@@ -90,7 +90,7 @@ Open source: https://github.com/ACESoftPH/my_offline_password_safe
 ```
 First public release.
 
-Offline Password Wallet stores your passwords in a single encrypted file on your device. No account, no sync, no internet permission.
+Lock Nest stores your passwords in a single encrypted file on your device. No account, no sync, no internet permission.
 
 • Entries with custom fields, search and per-field copy
 • Strong password generator

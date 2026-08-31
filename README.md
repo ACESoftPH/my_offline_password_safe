@@ -1,4 +1,4 @@
-# Offline Password Wallet
+# Lock Nest
 
 A **local-only, offline** password manager for Android. No server, no account, no
 cloud, no SQL database, no network permission. Everything lives in a single
@@ -318,7 +318,7 @@ five answers ─▶ normalize ─▶ PBKDF2 ─▶ Recovery KEK
              ─▶ DEK recovered  ─▶ vault unlocked via recovery
              ─▶ user picks a NEW master password
              ─▶ DEK re-wrapped under the new Master KEK (new salt) ─▶ atomic write
-             ─▶ continue using the wallet
+             ─▶ continue using Lock Nest
 ```
 
 - Wrong answers **never touch the vault file**, so a failed attempt cannot
@@ -384,7 +384,7 @@ silently collapsing the rest of the file into one field.
 **Spreadsheet formula injection.** A CSV value beginning with `=`, `+`, `-`, `@`,
 TAB or CR is executed as a formula by Excel / LibreOffice / Sheets. Export
 prefixes such values with an apostrophe (the standard "this is text" marker) and
-import strips it back off, so an Offline Password Wallet export → import round
+import strips it back off, so a Lock Nest export → import round
 trip is lossless while the exported file is safe to open in a spreadsheet. An
 apostrophe that isn't followed by one of those characters is left alone.
 
@@ -416,7 +416,7 @@ The app says so plainly and never pretends otherwise. See §10.
 ## 7b. Encrypted backup & restore
 
 For moving to a new phone, or recovering after the app/device is lost or
-compromised, the wallet can export a **portable encrypted backup** and restore
+compromised, Lock Nest can export a **portable encrypted backup** and restore
 from it. This is separate from CSV — the backup is never plaintext.
 
 Menu: `Import / Export → Export encrypted backup` and
@@ -458,7 +458,7 @@ A small JSON envelope (magic `OPW-ENCRYPTED-BACKUP`, `formatVersion` 1):
 Requires the vault unlocked. Prompts for a backup passphrase + confirmation
 (subject to the same ≥10-char / ≥3-class policy as the master password) with a
 strength meter, then writes the file to a user-chosen SAF `CREATE_DOCUMENT` URI
-(`offline-password-wallet-YYYY-MM-DD.opwbackup`). The app keeps no copy and never
+(`lock-nest-YYYY-MM-DD.opwbackup`). The app keeps no copy and never
 transmits it.
 
 ### Restore (`BackupManager.previewAndDecrypt` → `restoreAsNewVault` / `mergeIntoUnlockedVault`)

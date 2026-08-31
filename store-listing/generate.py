@@ -189,11 +189,13 @@ def feature_graphic(w=1024, h=500):
     img.paste(mark_bg, (78, (h - mark_px) // 2), m.convert("L"))
 
     x = 78 + mark_px + 62
-    d.text((x, 150), "Offline Password", font=font(62, "Bold"), fill=(255, 255, 255))
-    d.text((x, 218), "Wallet", font=font(62, "Bold"), fill=(255, 255, 255))
-    d.text((x, 300), "Encrypted on your device. No account,",
+    # "Lock Nest" fits on one line where the old two-word-per-line name did not,
+    # so it is set larger and the tagline moves up to keep the text block
+    # optically centred against the mark.
+    d.text((x, 150), "Lock Nest", font=font(76, "Bold"), fill=(255, 255, 255))
+    d.text((x, 272), "Encrypted on your device. No account,",
            font=font(30, "Regular"), fill=(186, 186, 192))
-    d.text((x, 340), "no cloud, no internet permission.",
+    d.text((x, 312), "no cloud, no internet permission.",
            font=font(30, "Regular"), fill=(186, 186, 192))
     return img
 

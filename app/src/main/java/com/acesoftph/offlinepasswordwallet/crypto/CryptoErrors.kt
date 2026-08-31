@@ -39,7 +39,7 @@ class VaultRollbackException(val storedRevision: Long, val fileRevision: Long) :
             "using this file.",
     )
 
-/** The selected file is not an Offline Password Wallet encrypted backup. */
+/** The selected file is not a Lock Nest encrypted backup. */
 class BackupFormatException(message: String, cause: Throwable? = null) :
     VaultCryptoException(message, cause)
 

@@ -167,7 +167,7 @@ fun ExportBackupScreen(onBack: () -> Unit) {
                         policyError != null -> message = policyError
                         passphrase != confirm -> message = "The two passphrases do not match."
                         else -> creator.launch(
-                            "offline-password-wallet-${dateStamp()}.${BackupCodec.FILE_EXTENSION}",
+                            "lock-nest-${dateStamp()}.${BackupCodec.FILE_EXTENSION}",
                         )
                     }
                 },
@@ -302,7 +302,7 @@ fun RestoreBackupScreen(onDone: () -> Unit, onCancel: () -> Unit) {
             when (phase) {
                 RestorePhase.PICK -> {
                     Text(
-                        "Select an Offline Password Wallet encrypted backup (.${BackupCodec.FILE_EXTENSION}) " +
+                        "Select a Lock Nest encrypted backup (.${BackupCodec.FILE_EXTENSION}) " +
                             "and enter its backup passphrase. The file is read into memory only.",
                         style = MaterialTheme.typography.bodySmall,
                     )

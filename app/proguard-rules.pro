@@ -1,4 +1,4 @@
-# Offline Password Wallet - R8/ProGuard rules
+# Lock Nest - R8/ProGuard rules
 
 # --- kotlinx.serialization ---
 -keepattributes *Annotation*, InnerClasses

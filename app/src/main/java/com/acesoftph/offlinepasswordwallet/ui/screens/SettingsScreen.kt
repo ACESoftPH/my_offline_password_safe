@@ -293,7 +293,7 @@ fun SettingsScreen(
             )
 
             Text(
-                "Offline Password Wallet — no network permission, no cloud, no analytics.",
+                "Lock Nest — no network permission, no cloud, no analytics.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

@@ -137,7 +137,7 @@ object Csv {
     /**
      * Neutralizes a value that a spreadsheet would otherwise execute, by prefixing
      * an apostrophe (the standard "treat as text" marker). Applied on export only;
-     * [unescapeFormula] reverses it on import, so an Offline Password Wallet
+     * [unescapeFormula] reverses it on import, so a Lock Nest
      * export → import round trip is lossless.
      */
     fun escapeFormula(value: String): String =

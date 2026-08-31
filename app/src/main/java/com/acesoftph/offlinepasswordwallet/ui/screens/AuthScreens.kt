@@ -65,7 +65,7 @@ fun SetupScreen(onRestoreBackup: () -> Unit) {
         if (password.isEmpty()) null else PasswordStrength.masterPolicyError(password.toCharArray())
     }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Set up your wallet") }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Set up your Lock Nest") }) }) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -79,7 +79,7 @@ fun SetupScreen(onRestoreBackup: () -> Unit) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Create a master password", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "This password encrypts everything in your wallet. It is never stored. " +
+                            "This password encrypts everything in your Lock Nest. It is never stored. " +
                                 "If you forget it, it cannot be recovered — you can only RESET it " +
                                 "using your five security answers, which creates a new master password.",
                             style = MaterialTheme.typography.bodySmall,
@@ -229,7 +229,7 @@ fun UnlockScreen(
         }
         BiometricAuthenticator.authenticate(
             activity = act,
-            title = "Unlock Offline Password Wallet",
+            title = "Unlock Lock Nest",
             subtitle = "Confirm your identity",
             cipher = cipher,
             onSuccess = { authedCipher ->
@@ -262,7 +262,7 @@ fun UnlockScreen(
         if (biometricPossible) runBiometricUnlock()
     }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Offline Password Wallet") }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Lock Nest") }) }) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),

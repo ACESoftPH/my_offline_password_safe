@@ -65,10 +65,10 @@ class BackupCodec(
         val file = try {
             json.decodeFromString(EncryptedBackupFile.serializer(), bytes.toString(Charsets.UTF_8))
         } catch (e: SerializationException) {
-            throw BackupFormatException("This file is not an Offline Password Wallet backup.", e)
+            throw BackupFormatException("This file is not a Lock Nest backup.", e)
         }
         if (file.magic != MAGIC) {
-            throw BackupFormatException("This file is not an Offline Password Wallet backup.")
+            throw BackupFormatException("This file is not a Lock Nest backup.")
         }
         if (file.formatVersion != FORMAT_VERSION) {
             throw BackupFormatException(

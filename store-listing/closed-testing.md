@@ -28,7 +28,7 @@ to run a closed test before they can apply for production access: at least
 - [ ] Data safety form submitted — no data collected, no data shared
 - [ ] Privacy policy URL set to `https://acesoftph.github.io/my_offline_password_safe/`
 - [ ] Target audience set to an adult band (18+, or 13+ at youngest)
-- [ ] `OfflinePasswordWallet-1.0.0.aab` built and signed
+- [ ] `LockNest-1.0.0.aab` built and signed
 - [ ] **12–15 real people** who have agreed in advance to take part
 
 That last item is the one that actually delays people. Recruit **15**, not 12:
@@ -41,7 +41,7 @@ during the 14 days.
 
 Play Console → **Testing → Closed testing → Testers** tab → **Create email list**.
 
-- Name it something like `Offline Password Wallet — closed testers`.
+- Name it something like `Lock Nest — closed testers`.
 - Upload `testers.csv`, or paste the addresses directly (comma- or newline-separated).
 - Replace the placeholder addresses first. Every address must be a **Google
   account** — a Gmail address, or any other address that has been registered with
@@ -51,7 +51,7 @@ Play Console → **Testing → Closed testing → Testers** tab → **Create ema
 
 Play Console → **Testing → Closed testing → Create new release**.
 
-- Upload `OfflinePasswordWallet-1.0.0.aab`.
+- Upload `LockNest-1.0.0.aab`.
 - Accept **Play App Signing** when offered. Google then holds the app signing key
   and your `keystore/release.jks` becomes the *upload key* — which means if you
   ever lose it, Google can reset it rather than you losing the listing forever.
@@ -102,7 +102,7 @@ Review of this application typically takes a few days.
 
 ## Message to send your testers
 
-> **Offline Password Wallet — closed test**
+> **Lock Nest — closed test**
 >
 > Thanks for helping test my Android password manager. It stores passwords in an
 > encrypted file on your phone — there's no account, no cloud, and the app has no

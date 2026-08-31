@@ -89,7 +89,7 @@ fun VaultListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Wallet") },
+                title = { Text("Password List") },
                 actions = {
                     IconButton(
                         onClick = { scope.launch { ServiceLocator.vaultRepository.lock() } },
