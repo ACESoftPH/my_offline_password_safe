@@ -61,7 +61,7 @@ utility with no content, no communication features, and no network access at all
 |---|---|
 | Does the app allow real-money gambling, or simulate gambling? | **No** |
 | Does the app contain a loot box or similar randomised paid mechanic? | **No** |
-| Does the app allow users to purchase items? | **No** — there are no in-app purchases and no paid content |
+| Does the app allow users to purchase items? | **Yes** — optional one-time purchases of extra vault capacity. No loot boxes, no randomised mechanic, no real-money gambling. |
 
 ### Miscellaneous
 
@@ -69,10 +69,10 @@ utility with no content, no communication features, and no network access at all
 |---|---|
 | Does the app share the user's current location with other users? | **No** |
 | Does the app allow users to interact or exchange content with each other? | **No** |
-| Does the app allow users to purchase digital goods? | **No** |
+| Does the app allow users to purchase digital goods? | **Yes** — one-time upgrades that raise the entry limit. Not subscriptions. |
 | Does the app contain any content, features or functionality not covered above that may be inappropriate for children? | **No** |
 | Is the app a "news" app? | **No** |
-| Does the app natively facilitate the buying or selling of anything? | **No** |
+| Does the app natively facilitate the buying or selling of anything? | **No** — the app sells its own upgrades through Google Play billing, but provides no marketplace or trading between users. |
 | Does the app contain user-generated content that is shared with others? | **No** — users create entries, but the data never leaves their own device |
 
 > The last one is the only question that deserves a second's thought. The app
@@ -117,15 +117,33 @@ the answers follow from the same facts:
 | Declaration | Answer |
 |---|---|
 | **Target audience** | 18+ (or 13+). See the note below. |
-| **Data safety** | No data collected, no data shared. See `README.md`. |
+| **Data safety** | No data collected, no data shared. Purchases are processed by Google Play, which is not app-collected data. See `README.md`. |
 | **Ads** | No ads |
 | **News app** | No |
 | **COVID-19 contact tracing / status app** | No |
-| **Data safety: encryption in transit** | Not applicable — no data is transmitted |
+| **Data safety: encryption in transit** | Not applicable — the app transmits no user data. Purchase traffic is Google Play's own, over its own encrypted channel. |
 | **Government app** | No |
-| **Financial features** | **None.** The app stores credentials; it does not provide banking, lending, payments, or crypto functionality. |
+| **Financial features** | **None.** The app stores credentials; it does not provide banking, lending, payments, or crypto functionality. Buying an upgrade is a Google Play transaction, not a financial feature of the app. |
 | **Health apps** | No |
 | **Privacy policy URL** | `https://acesoftph.github.io/my_offline_password_safe/` |
+
+### In-app purchases — retake required
+
+The purchase answers above **changed** when billing shipped. Play's questionnaire
+must be retaken, not edited: an existing rating was granted against "no in-app
+purchases", and leaving it stale is a misrepresentation even though the rating
+itself is very unlikely to move (one-time non-randomised purchases of extra
+capacity carry no gambling or loot-box implication).
+
+Also set, outside the questionnaire:
+
+- **Store listing → in-app purchases**: Yes. Play derives the "In-app purchases"
+  badge and the price range shown on the listing from the products themselves,
+  so create the products before submitting.
+- **Data safety**: still no data collected and none shared. A Play purchase is
+  handled by Google, not by the app, and is not declared as app-collected data.
+  The app stores exactly one purchase-derived value, on-device: which tier the
+  user owns.
 
 ### On target audience
 

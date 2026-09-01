@@ -12,9 +12,9 @@ Verify lengths after any edit: `python store-listing/check-lengths.py`
 | Field | Limit | Used |
 |---|---|---|
 | App name | 30 | 9 |
-| Short description | 80 | 79 |
-| Full description | 4000 | 3918 |
-| Release notes (per language) | 500 | 478 |
+| Short description | 80 | 74 |
+| Full description | 4000 | 3992 |
+| Release notes (per language) | 500 | 472 |
 
 ---
 
@@ -29,59 +29,62 @@ Lock Nest
 *Shown under the title in search results — the most-read line after the name.*
 
 ```
-Encrypted vault, 20 entries free. No account, no cloud, no internet permission.
+Encrypted vault, 20 entries free. No account, no cloud, no data collected.
 ```
 
 ## Full description
 
 ```
-Lock Nest keeps your passwords in a single encrypted file on your own phone. There is no account to create, no server, and no sync. The app does not request Android's internet permission at all, so it cannot send your data anywhere — you can verify that yourself in the Permissions section of this listing.
+Lock Nest keeps your passwords in a single encrypted file on your own phone. No account, no server, no sync. Your vault is never uploaded anywhere — no code in the app sends what you store, and there is no server for it to go to.
 
 THE FREE VERSION
 
-The free version stores up to 20 entries. Everything else is unlimited and nothing is time-limited: custom fields, searching, the password generator, biometric unlock, encrypted backups and CSV import and export all work fully. When you reach 20 entries the Add button stops until you delete one. Restoring a backup or importing a CSV that holds more than 20 keeps the first 20 and tells you beforehand how many will be left out.
+The free version stores up to 20 entries, and nothing else is limited or time-limited: custom fields, search, the generator, biometric unlock, encrypted backups and CSV import and export all work fully. At 20 the Add button stops until you delete one. Importing more than 20 keeps the first 20, and says beforehand how many are left out.
 
+MORE ROOM, IF YOU NEED IT
+
+Plus holds 100 entries, Pro 500, Ultimate 1,000, and Unlimited has no cap. These are one-time purchases, not subscriptions — nothing renews or expires.
+
+An upgrade changes one thing: how many entries your vault holds. Encryption, biometric unlock, backups and the generator are identical on every tier, including free. If you ever drop to a smaller tier, what you already saved stays visible and editable; only adding new entries stops.
 
 HOW YOUR DATA IS PROTECTED
 
-• Your vault is sealed with AES-256-GCM authenticated encryption.
-• Your master password is stretched into a key using PBKDF2-HMAC-SHA256 at 600,000 iterations, and is never stored anywhere in any form.
-• Every save uses a fresh random nonce, and any tampering with the vault file is detected rather than silently accepted.
-• The vault lives in the app's private storage and is excluded from Android's cloud backup, so it is never copied off your device behind your back.
+• Sealed with AES-256-GCM authenticated encryption. Tampering is detected, not silently accepted.
+• Your master password is stretched into a key with PBKDF2-HMAC-SHA256 at 600,000 iterations, and is never stored in any form.
+• The vault lives in private app storage and is excluded from Android's cloud backup, so it is never copied off your device behind your back.
 
 EVERYDAY USE
 
-• Store up to 20 entries, each with Title, Category, Username, Password, Website and Comments.
-• Add as many custom fields as you need — PIN, account number, recovery email, server, port, anything.
-• Search across titles, categories, usernames, websites and custom fields.
-• Copy any field with one tap. Copied passwords are flagged as sensitive, which hides them from the system clipboard preview on Android 13 and later, and are cleared automatically after a delay you choose.
-• Show or hide any password. Copying always copies the real value, never the mask.
-• Generate strong passwords with an adjustable length and an optional set of symbols, drawn from a cryptographically secure random source.
+• Entries hold Title, Category, Username, Password, Website and Comments, plus as many custom fields as you need: PIN, account number, recovery email, port, anything.
+• Search titles, categories, usernames, websites and custom fields.
+• Copy any field with one tap. Copied passwords are flagged as sensitive, hiding them from the clipboard preview on Android 13 and later, and are cleared after a delay you set.
+• Show or hide any password. Copying takes the real value, not the mask.
+• Generate strong passwords with an adjustable length and an optional symbol set, from a cryptographically secure random source.
 
 LOCKING
 
-• Unlock with your master password, or optionally with your fingerprint or face using Android's own biometric system. The app never sees your biometric data.
-• The vault locks itself after a period of inactivity that you choose, and also when you leave the app for longer than that.
-• Screenshots and screen recording are blocked by default, so your passwords cannot be captured by other software or left visible in the app switcher.
-
-IF YOU FORGET YOUR MASTER PASSWORD
-
-A correctly built password manager cannot show you your old master password, because it never stored it. Instead, you answer five security questions to authorise setting a new one. Your entries are preserved, and wrong answers are rate-limited to slow down guessing.
+• Unlock with your master password, or optionally your fingerprint or face using Android's own biometric system. The app never sees your biometric data.
+• The vault locks itself after an inactivity period you choose, and when you leave the app for longer.
+• Screenshots and screen recording are blocked by default, so passwords cannot be captured by other software or left in the app switcher.
 
 BACKUP AND MOVING PHONES
 
-• Export an encrypted backup protected by its own separate passphrase, and restore it on this phone or a new one.
-• Import and export semicolon-delimited CSV to move between password managers. CSV is plain text by necessity, and the app says so clearly and asks you to confirm before writing one.
+• Export an encrypted backup with its own separate passphrase, and restore it here or on a new phone.
+• Import and export semicolon-delimited CSV to move between password managers. CSV is plain text by necessity; the app says so and asks you to confirm first.
 
 WHAT THIS APP DOES NOT DO
 
-No ads. No analytics. No trackers. No cloud. No account. Nothing leaves your device unless you explicitly export a file yourself.
+No ads. No analytics. No trackers. No cloud. No account. Nothing you store leaves your device unless you export a file yourself.
 
-WORTH KNOWING BEFORE YOU START
+The app does request internet access, because Google Play's purchase system requires it. It is used only for buying and restoring an upgrade — if you never open the Upgrade screen, nothing connects.
 
-Because your data is only ever on your phone, nobody can recover it for you — not even the developer. If you forget both your master password and your security answers, or uninstall without a backup, the data is gone. Export an encrypted backup and keep it somewhere safe.
+IF YOU FORGET YOUR MASTER PASSWORD
 
-No password manager can protect you if your device itself is compromised, if malware is running with enough privileges, if you export a plaintext CSV and then expose it, if your master password is weak, or if someone guesses your security answers. The full security model, including its limitations, is documented in the source repository.
+A password manager built correctly cannot show you your old master password, because it never stored it. Instead you answer five security questions to set a new one. Wrong answers are rate-limited, and your entries survive.
+
+That is the only way back in. Your data is only ever on your phone, so nobody can recover it for you — not even the developer. Forget both your master password and your security answers, or uninstall without a backup, and it is gone. Export an encrypted backup and keep it safe.
+
+No password manager can protect you from a compromised device, malware with enough privileges, a plaintext CSV you export and expose, a weak master password, or guessable security answers. The full security model and its limits are in the source repository.
 
 Open source: https://github.com/ACESoftPH/my_offline_password_safe
 ```
@@ -95,7 +98,7 @@ Open source: https://github.com/ACESoftPH/my_offline_password_safe
 ```
 First public release.
 
-Lock Nest stores your passwords in a single encrypted file on your device. No account, no sync, no internet permission.
+Lock Nest stores your passwords in a single encrypted file on your device. No account, no sync, nothing uploaded.
 
 • Up to 20 entries, each with custom fields, search and per-field copy
 • Strong password generator
@@ -105,6 +108,28 @@ Lock Nest stores your passwords in a single encrypted file on your device. No ac
 • CSV import and export
 
 Please export an encrypted backup before uninstalling — data cannot be recovered otherwise.
+```
+
+> **1.0.0 has not shipped with in-app purchases.** If billing goes out in the
+> first public release, use the 1.1.0 notes below instead and delete this block —
+> two sets of release notes describing the same APK is how a listing ends up
+> contradicting itself.
+
+## Release notes — 1.1.0, the release that adds purchases
+
+*Use these only for the build that actually contains billing.*
+
+```
+More room, if you need it.
+
+The free vault still holds 20 entries. You can now buy more capacity as a one-time purchase — Plus 100, Pro 500, Ultimate 1,000, or Unlimited.
+
+• One-time purchases, not subscriptions. Nothing renews.
+• Every other feature is identical on every tier, including free.
+• Your existing entries are never affected by a limit.
+• Your vault stays encrypted on your device. Purchases are handled by Google Play.
+
+Restore a previous purchase from Settings → Upgrade → Restore purchases.
 ```
 
 ### Template for later releases

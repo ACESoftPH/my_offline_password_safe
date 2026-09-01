@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Privacy Policy — Lock Nest</title>
-<meta name="description" content="Privacy policy for the Lock Nest Android app. The app collects no data and has no internet permission.">
+<meta name="description" content="Privacy policy for the Lock Nest Android app. The app collects no data; purchases are handled by Google Play.">
 <!--
   Deliberately self-contained: no web fonts, no CDN, no analytics, no third-party
   requests of any kind. A privacy policy that phones out to other servers to
@@ -80,10 +80,14 @@
 <div class="callout">
   <p><strong>This app collects no data whatsoever.</strong></p>
   <p style="margin-top:8px">
-    It has no account system, no servers, and no analytics. It does not request
-    the Android <code>INTERNET</code> permission, so it is technically incapable
-    of transmitting anything anywhere — that restriction is enforced by the
-    Android operating system, not merely promised here.
+    It has no account system, no servers of its own, and no analytics. Your
+    passwords are never uploaded: nothing in the app sends what you store, and
+    there is no server for it to be sent to.
+  </p>
+  <p style="margin-top:8px">
+    The app does request internet access, because Google Play's purchase system
+    requires it. It is used for one thing — buying and restoring an optional
+    upgrade through Google Play. See section 4.
   </p>
 </div>
 
@@ -108,6 +112,9 @@
 </ul>
 <p>
   There is no server to send data to, and no code in the app that would do so.
+  Buying an upgrade does not change this: the transaction is handled entirely by
+  Google Play, and the developer receives no personal data from it — only
+  anonymous sales totals in the Play Console.
 </p>
 
 <h2><span class="n">3.</span> The data you create</h2>
@@ -129,18 +136,53 @@
   recover, or reset it.
 </p>
 
-<h2><span class="n">4.</span> Network access</h2>
+<h2><span class="n">4.</span> Network access and purchases</h2>
 <p>
-  The app declares <strong>no network permissions</strong>. You can verify this
-  yourself: on the Google Play listing, under “App info”, the permissions list
-  contains no internet or network access entry. Without the
-  <code>INTERNET</code> permission, Android blocks the app from opening any
-  network connection at all.
+  The app declares the <code>INTERNET</code> and <code>ACCESS_NETWORK_STATE</code>
+  permissions. They come from Google Play's billing library, which is required to
+  sell the optional capacity upgrades, and they are used for nothing else.
+</p>
+<p>
+  <strong>The app makes no network request of its own.</strong> There is no
+  analytics, no crash reporting, no telemetry, no update check and no sync. The
+  only component that can open a connection is Google Play's billing client, and
+  it is reached only from the Upgrade screen — if you never open that screen,
+  the app never connects to anything.
+</p>
+<p>
+  When you do buy or restore an upgrade, the purchase is carried out by
+  <strong>Google Play, not by this app</strong>. Google receives the information
+  it needs to process it — your Google account, your payment details and the
+  product you bought — under
+  <a href="https://policies.google.com/privacy">Google's own privacy policy</a>.
+  This app never sees or stores your payment details, and nothing about your
+  vault is included in a purchase. What the app keeps afterwards is a single
+  value: which tier you are entitled to.
+</p>
+<p>
+  Your entries are never part of any of this. No password, title, username,
+  custom field or search you type is transmitted, at any time, for any reason.
 </p>
 
 <h2><span class="n">5.</span> Permissions the app does request</h2>
 <table>
   <tr><th>Permission</th><th>Why</th></tr>
+  <tr>
+    <td><code>INTERNET</code><br><code>ACCESS_NETWORK_STATE</code></td>
+    <td>
+      Required by Google Play's billing library so the optional one-time upgrades
+      can be bought and restored. Used only for that. The app itself opens no
+      connection, and no vault data is ever transmitted. Removing in-app
+      purchases would remove both permissions.
+    </td>
+  </tr>
+  <tr>
+    <td><code>com.android.vending.BILLING</code></td>
+    <td>
+      Lets the app ask Google Play what you have purchased, so an upgrade you
+      paid for is restored on a new phone or after a reinstall.
+    </td>
+  </tr>
   <tr>
     <td><code>USE_BIOMETRIC</code><br><code>USE_FINGERPRINT</code></td>
     <td>

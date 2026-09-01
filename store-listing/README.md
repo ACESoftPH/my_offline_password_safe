@@ -60,11 +60,16 @@ which Play does not show you per-person.
 
 ## Data safety form
 
-The answer to every collection question is **no**. The app collects nothing,
-shares nothing, and has no network permission to do so with. The merged release
-manifest declares only `USE_BIOMETRIC` and `USE_FINGERPRINT`, both from
-`androidx.biometric`, and biometric matching is performed by Android — the app
-never receives biometric data.
+The answer to every collection question is **no**. The app collects nothing and
+shares nothing: no analytics, no crash reporting, no telemetry, and no code that
+transmits what a user stores.
+
+The merged release manifest declares `USE_BIOMETRIC` and `USE_FINGERPRINT` from
+`androidx.biometric` — biometric matching is performed by Android, and the app
+never receives biometric data — plus `INTERNET`, `ACCESS_NETWORK_STATE` and
+`com.android.vending.BILLING`, all three from Google Play's billing library and
+used only to sell and restore the capacity upgrades. A Play purchase is processed
+by Google, not by the app, so it is not declared as app-collected data.
 
 ## URLs and contact for the Play Console
 

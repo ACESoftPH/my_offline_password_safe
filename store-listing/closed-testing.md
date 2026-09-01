@@ -31,6 +31,19 @@ to run a closed test before they can apply for production access: at least
 - [ ] `LockNest-1.0.0.aab` built and signed
 - [ ] **12–15 real people** who have agreed in advance to take part
 
+If the build being tested **contains in-app purchases**, these are required too:
+
+- [ ] The four products created in Play Console → **Monetise → In-app products**,
+      with IDs matching `ProductCatalog`: `locknest_plus`, `locknest_pro`,
+      `locknest_ultimate`, `locknest_unlimited`. Nothing is buyable until they
+      exist and are **active**.
+- [ ] Content rating questionnaire **retaken** — the previous one answered "no
+      in-app purchases" (`content-rating.md`)
+- [ ] Listing text, privacy policy and support page updated for the `INTERNET`
+      permission the billing library adds. The old copy claimed the app had none.
+- [ ] Licence testers added (**Setup → Licence testing**) so testers can buy
+      without being charged
+
 That last item is the one that actually delays people. Recruit **15**, not 12:
 some will never open the invite, and the count must not dip below 12 at any point
 during the 14 days.
@@ -140,7 +153,8 @@ Review of this application typically takes a few days.
 First release.
 
 An offline password manager. Your vault is encrypted with AES-256-GCM and stored
-only on your device — there is no account, no sync, and no internet permission.
+only on your device — there is no account and no sync, and nothing you store is
+ever uploaded.
 
 • Entries with custom fields, search, and per-field copy
 • Strong password generator

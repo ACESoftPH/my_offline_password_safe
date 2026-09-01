@@ -1,8 +1,10 @@
 # Lock Nest
 
 A **local-only, offline** password manager for Android. No server, no account, no
-cloud, no SQL database, no network permission. Everything lives in a single
-encrypted file in the app's private storage.
+cloud, no SQL database. Everything lives in a single encrypted file in the app's
+private storage, and nothing a user stores is ever transmitted. The only network
+access in the app is Google Play's billing client, used solely to sell and
+restore the optional capacity upgrades.
 
 - Kotlin · Jetpack Compose · Material 3 · single Activity · manual DI
 - `minSdk 26`, `targetSdk 35`, `compileSdk 35`

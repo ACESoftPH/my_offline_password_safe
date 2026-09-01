@@ -195,7 +195,7 @@ def feature_graphic(w=1024, h=500):
     d.text((x, 150), "Lock Nest", font=font(76, "Bold"), fill=(255, 255, 255))
     d.text((x, 272), "Encrypted on your device. No account,",
            font=font(30, "Regular"), fill=(186, 186, 192))
-    d.text((x, 312), "no cloud, no internet permission.",
+    d.text((x, 312), "no cloud, nothing uploaded.",
            font=font(30, "Regular"), fill=(186, 186, 192))
     return img
 
