@@ -12,9 +12,9 @@ Verify lengths after any edit: `python store-listing/check-lengths.py`
 | Field | Limit | Used |
 |---|---|---|
 | App name | 30 | 9 |
-| Short description | 80 | 71 |
-| Full description | 4000 | 3453 |
-| Release notes (per language) | 500 | 463 |
+| Short description | 80 | 79 |
+| Full description | 4000 | 3918 |
+| Release notes (per language) | 500 | 478 |
 
 ---
 
@@ -29,13 +29,18 @@ Lock Nest
 *Shown under the title in search results — the most-read line after the name.*
 
 ```
-Encrypted password vault. No account, no cloud, no internet permission.
+Encrypted vault, 20 entries free. No account, no cloud, no internet permission.
 ```
 
 ## Full description
 
 ```
 Lock Nest keeps your passwords in a single encrypted file on your own phone. There is no account to create, no server, and no sync. The app does not request Android's internet permission at all, so it cannot send your data anywhere — you can verify that yourself in the Permissions section of this listing.
+
+THE FREE VERSION
+
+The free version stores up to 20 entries. Everything else is unlimited and nothing is time-limited: custom fields, searching, the password generator, biometric unlock, encrypted backups and CSV import and export all work fully. When you reach 20 entries the Add button stops until you delete one. Restoring a backup or importing a CSV that holds more than 20 keeps the first 20 and tells you beforehand how many will be left out.
+
 
 HOW YOUR DATA IS PROTECTED
 
@@ -46,7 +51,7 @@ HOW YOUR DATA IS PROTECTED
 
 EVERYDAY USE
 
-• Store entries with Title, Category, Username, Password, Website and Comments.
+• Store up to 20 entries, each with Title, Category, Username, Password, Website and Comments.
 • Add as many custom fields as you need — PIN, account number, recovery email, server, port, anything.
 • Search across titles, categories, usernames, websites and custom fields.
 • Copy any field with one tap. Copied passwords are flagged as sensitive, which hides them from the system clipboard preview on Android 13 and later, and are cleared automatically after a delay you choose.
@@ -92,7 +97,7 @@ First public release.
 
 Lock Nest stores your passwords in a single encrypted file on your device. No account, no sync, no internet permission.
 
-• Entries with custom fields, search and per-field copy
+• Up to 20 entries, each with custom fields, search and per-field copy
 • Strong password generator
 • Optional fingerprint or face unlock
 • Auto-lock after inactivity
