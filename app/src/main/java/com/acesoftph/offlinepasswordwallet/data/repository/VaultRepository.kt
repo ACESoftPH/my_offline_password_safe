@@ -8,8 +8,6 @@ import com.acesoftph.offlinepasswordwallet.data.model.VaultDocument
 import com.acesoftph.offlinepasswordwallet.data.model.VaultEntry
 import com.acesoftph.offlinepasswordwallet.data.storage.VaultCodec
 import com.acesoftph.offlinepasswordwallet.data.storage.VaultFileStore
-import com.acesoftph.offlinepasswordwallet.tier.FreeTier
-import com.acesoftph.offlinepasswordwallet.tier.FreeTierLimitException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,8 +53,16 @@ class VaultRepository(
      * seconds (an ANR on mid-range devices).
      */
     private val cryptoDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    /**
+     * Entry capacity (§46G). Defaults to unlimited so the vault is complete on
+     * its own; the entitlement layer supplies the real policy in ServiceLocator.
+     */
+    private val capacity: EntryCapacityPolicy = UnlimitedEntryCapacity,
 ) {
     private val mutex = Mutex()
+
+    /** Spare capacity for [count] existing entries. Never negative (§46H). */
+    private fun roomFor(count: Int): Int = (capacity.maxEntries() - count).coerceAtLeast(0)
 
     private val _state = MutableStateFlow<VaultState>(
         if (store.exists()) VaultState.Locked else VaultState.Uninitialized,
@@ -107,10 +113,10 @@ class VaultRepository(
         document: VaultDocument,
     ): Result<Unit> = guarded {
         run {
-            // A backup can hold more than the free tier allows (it may have been
-            // written by a paid install, or before the cap existed). Keep the first
-            // MAX_ENTRIES and drop the rest; the caller reports how many were lost.
-            val capped = document.copy(entries = FreeTier.cap(document.entries))
+            // A backup can hold more than the current tier allows (written by a
+            // higher tier, or before a downgrade). Keep what fits and drop the
+            // rest; the caller reports how many were lost before confirming.
+            val capped = document.copy(entries = document.entries.take(capacity.maxEntries()))
             val file = codec.createVault(masterPassword, rawAnswers, capped)
             store.write(file)
             adopt(file, codec.unlockWithMaster(file, masterPassword))
@@ -214,7 +220,9 @@ class VaultRepository(
             // must still be editable.
             doc.entries.toMutableList().apply { this[idx] = stamped }
         } else {
-            if (FreeTier.isFull(doc.entries.size)) throw FreeTierLimitException()
+            if (roomFor(doc.entries.size) == 0) {
+                throw EntryCapacityReachedException(capacity.capacityMessage())
+            }
             doc.entries + stamped
         }
         doc.copy(entries = entries)
@@ -226,7 +234,9 @@ class VaultRepository(
 
     suspend fun duplicateEntry(id: String): Result<Unit> = mutate { doc ->
         val original = doc.entries.firstOrNull { it.id == id } ?: return@mutate doc
-        if (FreeTier.isFull(doc.entries.size)) throw FreeTierLimitException()
+        if (roomFor(doc.entries.size) == 0) {
+            throw EntryCapacityReachedException(capacity.capacityMessage())
+        }
         val now = System.currentTimeMillis()
         val title = original.value("Title")
         val copy = original.copy(
@@ -251,16 +261,16 @@ class VaultRepository(
                 // once and upsertEntry only ever updates the first match, so the
                 // twin can never be edited or individually deleted. Give any
                 // colliding entry a fresh id instead.
-                // Both modes keep only what fits under the free cap and discard the
+                // Both modes keep only what fits under the current capacity and discard the
                 // rest, rather than failing the whole import: a restore that refused
                 // outright would leave someone with a 25-entry backup no way to get
                 // any of it back.
                 ImportMode.ADD -> {
-                    val room = FreeTier.remaining(doc.entries.size)
+                    val room = roomFor(doc.entries.size)
                     doc.copy(entries = doc.entries + withUniqueIds(imported.take(room), doc.entries))
                 }
                 ImportMode.REPLACE ->
-                    doc.copy(entries = withUniqueIds(FreeTier.cap(imported), emptyList()))
+                    doc.copy(entries = withUniqueIds(imported.take(capacity.maxEntries()), emptyList()))
             }
         }
 

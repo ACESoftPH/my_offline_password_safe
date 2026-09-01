@@ -11,6 +11,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.LockClock
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Screenshot
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -43,6 +45,8 @@ import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.acesoftph.offlinepasswordwallet.di.ServiceLocator
+import com.acesoftph.offlinepasswordwallet.entitlement.SubscriptionTier
+import com.acesoftph.offlinepasswordwallet.entitlement.ProductCatalog
 import com.acesoftph.offlinepasswordwallet.password.PasswordGenerator
 import com.acesoftph.offlinepasswordwallet.security.BiometricAuthenticator
 import com.acesoftph.offlinepasswordwallet.settings.AppSettings
@@ -51,7 +55,7 @@ import com.acesoftph.offlinepasswordwallet.ui.components.BottomBarClearance
 import com.acesoftph.offlinepasswordwallet.ui.components.SectionHeader
 import com.acesoftph.offlinepasswordwallet.ui.components.SettingRow
 import com.acesoftph.offlinepasswordwallet.ui.components.WalletCard
-import com.acesoftph.offlinepasswordwallet.tier.FreeTier
+import com.acesoftph.offlinepasswordwallet.ui.components.tierTitle
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -65,6 +69,7 @@ fun SettingsScreen(
     onExport: () -> Unit,
     onExportBackup: () -> Unit,
     onRestoreBackup: () -> Unit,
+    onUpgrade: () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
@@ -75,6 +80,10 @@ fun SettingsScreen(
 
     var message by remember { mutableStateOf<String?>(null) }
     var showTimeouts by remember { mutableStateOf(false) }
+
+    val entitlement = ServiceLocator.entitlementManager
+    val tier by entitlement.tier.collectAsStateWithLifecycle()
+    var showDebugTiers by remember { mutableStateOf(false) }
 
     /**
      * Turns the setting off AND destroys any key material, so the toggle can never
@@ -124,7 +133,7 @@ fun SettingsScreen(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text(FreeTier.title("Settings")) }) },
+        topBar = { TopAppBar(title = { Text(tierTitle("Settings")) }) },
         bottomBar = bottomBar,
     ) { padding ->
         Column(
@@ -142,6 +151,63 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = 8.dp),
                 )
+            }
+
+            SectionHeader("Your plan")
+
+            SettingRow(
+                icon = Icons.Filled.WorkspacePremium,
+                title = "${tier.displayName} plan",
+                subtitle = if (entitlement.isUnlimited()) {
+                    "Unlimited entries"
+                } else {
+                    "Up to ${"%,d".format(entitlement.getMaximumEntries())} entries · " +
+                        "tap to see the other plans"
+                },
+                onClick = onUpgrade,
+                modifier = Modifier.testTag("nav_upgrade"),
+            )
+
+            // Debug builds only (§46D). `supportsDebugOverride` is false in
+            // release because the release variant supplies NoEntitlementOverride,
+            // and the override implementation itself is not compiled into a
+            // release APK at all -- this row has nothing to switch on there.
+            if (entitlement.supportsDebugOverride) {
+                SettingRow(
+                    icon = Icons.Filled.BugReport,
+                    title = "Debug: force a tier",
+                    subtitle = "Development builds only. Not present in release.",
+                    onClick = { showDebugTiers = !showDebugTiers },
+                    modifier = Modifier.testTag("debug_tier_row"),
+                )
+                if (showDebugTiers) {
+                    WalletCard {
+                        Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                            SubscriptionTier.entries.forEach { option ->
+                                Row(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .selectable(
+                                            selected = tier == option,
+                                            onClick = { entitlement.setDebugTier(option) },
+                                        )
+                                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    RadioButton(
+                                        selected = tier == option,
+                                        onClick = { entitlement.setDebugTier(option) },
+                                        modifier = Modifier.testTag("debug_tier_${option.name}"),
+                                    )
+                                    Text(
+                                        "${option.displayName} · " +
+                                            ProductCatalog.productFor(option).capacityLabel,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             SectionHeader("Security")

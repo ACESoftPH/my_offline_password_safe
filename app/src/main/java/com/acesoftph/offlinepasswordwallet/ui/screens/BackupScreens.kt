@@ -48,7 +48,7 @@ import com.acesoftph.offlinepasswordwallet.di.ServiceLocator
 import com.acesoftph.offlinepasswordwallet.password.PasswordStrength
 import com.acesoftph.offlinepasswordwallet.ui.components.PasswordField
 import com.acesoftph.offlinepasswordwallet.ui.components.StrengthMeter
-import com.acesoftph.offlinepasswordwallet.tier.FreeTier
+import com.acesoftph.offlinepasswordwallet.ui.components.tierTitle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -110,7 +110,7 @@ fun ExportBackupScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(FreeTier.title("Export encrypted backup")) },
+                title = { Text(tierTitle("Export encrypted backup")) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -198,6 +198,7 @@ fun RestoreBackupScreen(onDone: () -> Unit, onCancel: () -> Unit) {
     val vaultExists = ServiceLocator.vaultRepository.isInitialized()
     val vaultUnlocked = state is VaultState.Unlocked
     val currentCount = (state as? VaultState.Unlocked)?.entries?.size ?: 0
+    val entitlement = ServiceLocator.entitlementManager
 
     var phase by remember { mutableStateOf(RestorePhase.PICK) }
     var fileBytes by remember { mutableStateOf<ByteArray?>(null) }
@@ -284,7 +285,7 @@ fun RestoreBackupScreen(onDone: () -> Unit, onCancel: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(FreeTier.title("Restore from encrypted backup")) },
+                title = { Text(tierTitle("Restore from encrypted backup")) },
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -336,7 +337,7 @@ fun RestoreBackupScreen(onDone: () -> Unit, onCancel: () -> Unit) {
                     PreviewSummary(preview)
                     Text("The vault is unlocked. How should this backup be applied?")
                     Button(
-                        enabled = !busy && FreeTier.remaining(currentCount) > 0,
+                        enabled = !busy && entitlement.remainingEntryCapacity(currentCount) > 0,
                         onClick = {
                             val doc = decrypted ?: return@Button
                             busy = true
@@ -353,11 +354,11 @@ fun RestoreBackupScreen(onDone: () -> Unit, onCancel: () -> Unit) {
                         // button must not promise the backup's full count.
                         val willAdd = minOf(
                             preview?.entryCount ?: 0,
-                            FreeTier.remaining(currentCount),
+                            entitlement.remainingEntryCapacity(currentCount),
                         )
                         Text(
                             if (willAdd == 0) {
-                                "No room — the vault already holds ${FreeTier.MAX_ENTRIES} entries"
+                                "No room — the vault is at its ${"%,d".format(entitlement.getMaximumEntries())}-entry limit"
                             } else {
                                 "Add $willAdd entries to the current vault"
                             },
@@ -433,7 +434,7 @@ fun RestoreBackupScreen(onDone: () -> Unit, onCancel: () -> Unit) {
             text = {
                 Text(
                     "Every entry currently stored on this device will be permanently deleted and " +
-                        "replaced with the ${minOf(preview?.entryCount ?: 0, FreeTier.MAX_ENTRIES)} entries " +
+                        "replaced with the ${minOf(preview?.entryCount ?: 0, entitlement.getMaximumEntries())} entries " +
                         "from the backup. " +
                         "Biometric login will be turned off. This cannot be undone.",
                 )
@@ -462,12 +463,13 @@ private fun PreviewSummary(preview: BackupPreview?) {
     // Warn BEFORE anything is discarded rather than after: the restore screens
     // navigate away on success, so a notice at the end would never be seen, and
     // silently dropping entries someone came here to recover is not acceptable.
-    val dropped = FreeTier.discarded(preview.entryCount)
+    val max = ServiceLocator.entitlementManager.getMaximumEntries()
+    val dropped = (preview.entryCount - max).coerceAtLeast(0)
     if (dropped > 0) {
         Text(
-            "This backup holds more than the free version's ${FreeTier.MAX_ENTRIES}-entry limit. " +
-                "The first ${FreeTier.MAX_ENTRIES} will be restored and the remaining $dropped " +
-                "will be discarded.",
+            "This backup holds more than your ${ServiceLocator.entitlementManager.getCurrentTier().displayName} " +
+                "vault's ${"%,d".format(max)}-entry limit. The first ${"%,d".format(max)} will be " +
+                "restored and the remaining $dropped will be discarded.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
             modifier = Modifier.fillMaxWidth().testTag("restore_cap_warning"),

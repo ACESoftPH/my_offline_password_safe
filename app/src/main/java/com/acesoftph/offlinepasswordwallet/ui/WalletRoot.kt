@@ -27,6 +27,7 @@ import com.acesoftph.offlinepasswordwallet.ui.screens.RecoveryScreen
 import com.acesoftph.offlinepasswordwallet.ui.screens.RestoreBackupScreen
 import com.acesoftph.offlinepasswordwallet.ui.screens.SettingsScreen
 import com.acesoftph.offlinepasswordwallet.ui.screens.SetupScreen
+import com.acesoftph.offlinepasswordwallet.ui.screens.UpgradeScreen
 import com.acesoftph.offlinepasswordwallet.ui.screens.UnlockScreen
 import com.acesoftph.offlinepasswordwallet.ui.screens.VaultListScreen
 
@@ -167,6 +168,7 @@ private fun NavGraphBuilder.vaultGraph(navController: NavHostController, activit
         VaultListScreen(
             onOpenEntry = { id -> navController.navigate(Dest.detail(id)) },
             onAddEntry = { navController.navigate(Dest.edit(Dest.NEW_ENTRY_ID)) },
+            onUpgrade = { navController.navigate(Dest.UPGRADE) },
             // Leaving via back is a clear signal the user is done, so drop the
             // decrypted vault before the activity goes away. Without this the
             // process can survive and a relaunch inside the auto-lock window
@@ -194,6 +196,7 @@ private fun NavGraphBuilder.vaultGraph(navController: NavHostController, activit
             onExport = { navController.navigate(Dest.EXPORT_CSV) },
             onExportBackup = { navController.navigate(Dest.EXPORT_BACKUP) },
             onRestoreBackup = { navController.navigate(Dest.RESTORE_BACKUP) },
+            onUpgrade = { navController.navigate(Dest.UPGRADE) },
             bottomBar = { bar(WalletTab.SETTINGS) },
         )
     }
@@ -228,5 +231,8 @@ private fun NavGraphBuilder.vaultGraph(navController: NavHostController, activit
     }
     composable(Dest.EXPORT_BACKUP) {
         ExportBackupScreen(onBack = { navController.popBackStack() })
+    }
+    composable(Dest.UPGRADE) {
+        UpgradeScreen(onBack = { navController.popBackStack() })
     }
 }

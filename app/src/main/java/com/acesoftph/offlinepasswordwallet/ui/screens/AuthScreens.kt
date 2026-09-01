@@ -43,7 +43,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import com.acesoftph.offlinepasswordwallet.ui.components.PasswordField
 import com.acesoftph.offlinepasswordwallet.ui.components.WalletCard
 import com.acesoftph.offlinepasswordwallet.ui.components.StrengthMeter
-import com.acesoftph.offlinepasswordwallet.tier.FreeTier
+import com.acesoftph.offlinepasswordwallet.ui.components.tierTitle
 import kotlinx.coroutines.launch
 
 /* --------------------------------------------------------------------------- */
@@ -66,7 +66,7 @@ fun SetupScreen(onRestoreBackup: () -> Unit) {
         if (password.isEmpty()) null else PasswordStrength.masterPolicyError(password.toCharArray())
     }
 
-    Scaffold(topBar = { TopAppBar(title = { Text(FreeTier.title("Set up your Lock Nest")) }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text(tierTitle("Set up your Lock Nest")) }) }) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -263,7 +263,7 @@ fun UnlockScreen(
         if (biometricPossible) runBiometricUnlock()
     }
 
-    Scaffold(topBar = { TopAppBar(title = { Text(FreeTier.title("Lock Nest")) }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text(tierTitle("Lock Nest")) }) }) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -339,7 +339,7 @@ fun RecoveryScreen(onDone: () -> Unit, onCancel: () -> Unit) {
         }
     }
 
-    Scaffold(topBar = { TopAppBar(title = { Text(FreeTier.title("Reset master password")) }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text(tierTitle("Reset master password")) }) }) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()

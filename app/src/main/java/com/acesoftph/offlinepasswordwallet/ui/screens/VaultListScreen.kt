@@ -18,6 +18,8 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -41,7 +43,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
-import com.acesoftph.offlinepasswordwallet.tier.FreeTier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -53,6 +54,7 @@ import com.acesoftph.offlinepasswordwallet.ui.components.BottomBarClearance
 import com.acesoftph.offlinepasswordwallet.ui.components.EntryAvatar
 import com.acesoftph.offlinepasswordwallet.ui.components.SectionHeader
 import com.acesoftph.offlinepasswordwallet.ui.components.WalletCard
+import com.acesoftph.offlinepasswordwallet.ui.components.tierTitle
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,6 +63,7 @@ fun VaultListScreen(
     onOpenEntry: (String) -> Unit,
     onAddEntry: () -> Unit,
     onLockAndExit: () -> Unit = {},
+    onUpgrade: () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
@@ -90,12 +93,20 @@ fun VaultListScreen(
         }
     }
 
-    val vaultFull = FreeTier.isFull(entries.size)
+    // Every capacity question goes to the entitlement layer; this screen holds
+    // no notion of which tier is in play or what it allows (§46A.2).
+    val entitlement = ServiceLocator.entitlementManager
+    val tier by entitlement.tier.collectAsStateWithLifecycle()
+    val maxEntries = remember(tier) { entitlement.getMaximumEntries() }
+    val unlimited = remember(tier) { entitlement.isUnlimited() }
+    val vaultFull = !entitlement.canCreateEntry(entries.size)
+    val overCapacity = entitlement.isOverCapacity(entries.size)
+    var showCapacityPrompt by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(FreeTier.title("Password List")) },
+                title = { Text(tierTitle("Password List")) },
                 actions = {
                     IconButton(
                         onClick = { scope.launch { ServiceLocator.vaultRepository.lock() } },
@@ -111,13 +122,7 @@ fun VaultListScreen(
             // still explains why rather than doing nothing: a control that is
             // visibly dead and silent reads as a bug.
             ExtendedFloatingActionButton(
-                onClick = {
-                    if (vaultFull) {
-                        scope.launch { snackbar.showSnackbar(FreeTier.LIMIT_REACHED) }
-                    } else {
-                        onAddEntry()
-                    }
-                },
+                onClick = { if (vaultFull) showCapacityPrompt = true else onAddEntry() },
                 containerColor = if (vaultFull) {
                     MaterialTheme.colorScheme.surfaceContainerHighest
                 } else {
@@ -175,14 +180,21 @@ fun VaultListScreen(
                 Text(
                     // Showing the cap alongside the count makes the limit
                     // discoverable before the button goes dead, not after.
-                    text = if (query.isBlank()) {
-                        "${entries.size} of ${FreeTier.MAX_ENTRIES} entries" +
-                            if (vaultFull) " · free limit reached" else ""
-                    } else {
-                        "${filtered.size} of ${entries.size} shown"
+                    // An unlimited vault must not advertise a number: showing
+                    // "of 2,147,483,647" would be both absurd and a leak of the
+                    // sentinel used for "no practical limit".
+                    text = when {
+                        query.isNotBlank() -> "${filtered.size} of ${entries.size} shown"
+                        unlimited -> "${"%,d".format(entries.size)} entries"
+                        overCapacity ->
+                            "${"%,d".format(entries.size)} entries · over your " +
+                                "${"%,d".format(maxEntries)}-entry limit"
+                        else ->
+                            "${"%,d".format(entries.size)} of ${"%,d".format(maxEntries)} entries" +
+                                if (vaultFull) " · limit reached" else ""
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (vaultFull && query.isBlank()) {
+                    color = if (vaultFull && !unlimited && query.isBlank()) {
                         MaterialTheme.colorScheme.primary
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
@@ -220,6 +232,45 @@ fun VaultListScreen(
                 }
             }
         }
+    }
+    // §46G: refusing an add has to come with an explanation and a way forward,
+    // not a dead button. Existing entries are untouched and fully usable while
+    // this is showing -- the limit blocks creation only (§46H).
+    if (showCapacityPrompt) {
+        val next = entitlement.nextTierUp()
+        AlertDialog(
+            onDismissRequest = { showCapacityPrompt = false },
+            title = { Text("Vault capacity reached") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(entitlement.capacityMessage())
+                    if (next != null) {
+                        Text(
+                            "${next.priceLabel} · one-time purchase, no subscription.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Text(
+                        "Your existing entries are unaffected. You can still open, " +
+                            "edit and delete them.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {
+                if (next != null) {
+                    TextButton(
+                        onClick = { showCapacityPrompt = false; onUpgrade() },
+                        modifier = Modifier.testTag("capacity_upgrade"),
+                    ) { Text("Upgrade") }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCapacityPrompt = false }) { Text("Not now") }
+            },
+        )
     }
 }
 

@@ -49,7 +49,7 @@ import com.acesoftph.offlinepasswordwallet.data.repository.toUserMessage
 import com.acesoftph.offlinepasswordwallet.di.ServiceLocator
 import com.acesoftph.offlinepasswordwallet.ui.components.PasswordField
 import com.acesoftph.offlinepasswordwallet.ui.components.StrengthMeter
-import com.acesoftph.offlinepasswordwallet.tier.FreeTier
+import com.acesoftph.offlinepasswordwallet.ui.components.tierTitle
 import kotlinx.coroutines.launch
 
 /**
@@ -169,7 +169,7 @@ fun EntryEditScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(FreeTier.title(if (isNew) "New entry" else "Edit entry")) },
+                title = { Text(tierTitle(if (isNew) "New entry" else "Edit entry")) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

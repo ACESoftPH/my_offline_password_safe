@@ -45,7 +45,7 @@ import com.acesoftph.offlinepasswordwallet.di.ServiceLocator
 import com.acesoftph.offlinepasswordwallet.importexport.CsvExporter
 import com.acesoftph.offlinepasswordwallet.importexport.CsvImportPreview
 import com.acesoftph.offlinepasswordwallet.importexport.CsvImporter
-import com.acesoftph.offlinepasswordwallet.tier.FreeTier
+import com.acesoftph.offlinepasswordwallet.ui.components.tierTitle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -70,11 +70,12 @@ fun ImportCsvScreen(onBack: () -> Unit) {
 
     val state by ServiceLocator.vaultRepository.state.collectAsStateWithLifecycle()
     val currentCount = (state as? VaultState.Unlocked)?.entries?.size ?: 0
+    val entitlement = ServiceLocator.entitlementManager
 
     /** How many of a [total]-row import will actually land, under the free cap. */
     fun willImport(total: Int): Int = when (mode) {
-        ImportMode.ADD -> minOf(total, FreeTier.remaining(currentCount))
-        ImportMode.REPLACE -> minOf(total, FreeTier.MAX_ENTRIES)
+        ImportMode.ADD -> minOf(total, entitlement.remainingEntryCapacity(currentCount))
+        ImportMode.REPLACE -> minOf(total, entitlement.getMaximumEntries())
     }
 
     val picker = rememberLauncherForActivityResult(
@@ -125,7 +126,7 @@ fun ImportCsvScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(FreeTier.title("Import CSV")) },
+                title = { Text(tierTitle("Import CSV")) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -159,8 +160,8 @@ fun ImportCsvScreen(onBack: () -> Unit) {
                 Text("Imported $it entries.", color = MaterialTheme.colorScheme.primary)
                 if (discarded > 0) {
                     Text(
-                        "$discarded were discarded: the free version holds up to " +
-                            "${FreeTier.MAX_ENTRIES} entries.",
+                        "$discarded were discarded: your plan holds up to " +
+                            "${"%,d".format(entitlement.getMaximumEntries())} entries.",
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.testTag("import_cap_warning"),
@@ -181,8 +182,8 @@ fun ImportCsvScreen(onBack: () -> Unit) {
                 val dropped = p.entryCount - willImport(p.entryCount)
                 if (dropped > 0) {
                     Text(
-                        "Only ${willImport(p.entryCount)} will be imported — the free version holds " +
-                            "up to ${FreeTier.MAX_ENTRIES} entries, so $dropped will be discarded.",
+                        "Only ${willImport(p.entryCount)} will be imported — your plan holds " +
+                            "up to ${"%,d".format(entitlement.getMaximumEntries())} entries, so $dropped will be discarded.",
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.testTag("import_preview_cap"),
@@ -213,7 +214,7 @@ fun ImportCsvScreen(onBack: () -> Unit) {
                         if (mode == ImportMode.REPLACE) {
                             "Replace vault with import"
                         } else if (willImport(p.entryCount) == 0) {
-                            "No room — the vault already holds ${FreeTier.MAX_ENTRIES} entries"
+                            "No room — the vault is at its ${"%,d".format(entitlement.getMaximumEntries())}-entry limit"
                         } else {
                             "Add ${willImport(p.entryCount)} entries"
                         },
@@ -230,7 +231,7 @@ fun ImportCsvScreen(onBack: () -> Unit) {
             text = {
                 Text(
                     "Every existing entry will be permanently deleted and replaced with the " +
-                        "${minOf(preview?.entryCount ?: 0, FreeTier.MAX_ENTRIES)} imported entries. " +
+                        "${minOf(preview?.entryCount ?: 0, entitlement.getMaximumEntries())} imported entries. " +
                         "This cannot be undone.",
                 )
             },
@@ -285,7 +286,7 @@ fun ExportCsvScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(FreeTier.title("Export CSV")) },
+                title = { Text(tierTitle("Export CSV")) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

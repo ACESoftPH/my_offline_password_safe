@@ -28,7 +28,7 @@ encrypted file in the app's private storage.
 # Release App Bundle, for Google Play
 ./gradlew bundleRelease            # -> app/build/outputs/bundle/release/app-release.aab
 
-# JVM + Robolectric unit tests (146 tests)
+# JVM + Robolectric unit tests (178 tests)
 ./gradlew testDebugUnitTest
 
 # Android lint
@@ -98,6 +98,8 @@ com.acesoftph.offlinepasswordwallet
 │                      KeyManager (Keystore), BiometricAuthenticator, AppLockManager
 ├── password/          PasswordGenerator, PasswordStrength
 ├── importexport/      Csv (parser/writer), CsvImporter, CsvExporter
+├── entitlement/       SubscriptionTier, ProductCatalog, EntitlementManager,
+│                      EntitlementStore (HMAC-tagged cache), BillingRepository
 ├── settings/          SettingsRepository (DataStore), AppSettings
 ├── ui/                MainActivity, WalletRoot (nav), screens/, components/, theme/
 └── di/                ServiceLocator
@@ -718,8 +720,143 @@ Additional constraints:
 
 ---
 
+## 15b. Editions, entry limits & monetization
+
+Lock Nest is free to use and monetized by **one-time** purchases of extra vault
+capacity. No subscriptions, no ads, no analytics, no trackers, and no selling of
+user data — a tier buys capacity and nothing else.
+
+### Tiers
+
+| Tier | Max entries | Planned price | Product ID |
+|---|---:|---:|---|
+| Free | 20 | — | `locknest_free` |
+| Plus | 100 | PHP 299 | `locknest_plus` |
+| Pro | 500 | PHP 399 | `locknest_pro` |
+| Ultimate | 1,000 | PHP 599 | `locknest_ultimate` |
+| Unlimited | no practical limit | PHP 799 | `locknest_unlimited` |
+
+Capacities, product IDs and planning prices live **only** in `ProductCatalog`.
+No screen and no domain class hard-codes a limit or a price; they ask
+`EntitlementManager`. Product IDs are placeholders until the products exist in
+Play Console, and renaming them is a change to that one file. Google Play is the
+source of truth for the price a user actually sees, localized to their country —
+the pesos above are planning values, and the Upgrade screen says so.
+
+The limit counts **entries**, not fields. One entry with a username, password,
+website, PIN and recovery email is one entry, not five. Custom fields per entry
+are unlimited on every tier.
+
+### Layering
+
+```
+UI  ->  EntitlementManager  ->  BillingRepository  ->  Google Play Billing
+             |
+             +-- EntitlementStore (integrity-protected offline cache)
+
+VaultRepository -> EntryCapacityPolicy   (an Int and a message; knows nothing
+                                          about tiers, products or billing)
+```
+
+The vault does not depend on the entitlement layer, and neither depends on
+billing. `VaultRepository` takes an `EntryCapacityPolicy` that defaults to
+unlimited, so the vault is complete and testable with no monetization present at
+all. The entitlement layer holds no vault reference and works while the vault is
+locked.
+
+**A tier never affects cryptographic access.** Encryption, the master password,
+recovery, biometrics and auto-lock are identical on every tier, and nothing on
+the unlock path consults an entitlement. Forging a tier buys capacity, not
+decryption, and cannot expose anyone else's data.
+
+### Enforcement, and what happens at the limit
+
+Capacity is enforced in `VaultRepository`, not in the "Add entry" button, because
+entries also arrive by CSV import, by duplicating an entry, and by restoring a
+backup. Reaching the limit blocks **creation only**:
+
+- Adding a new entry and duplicating one are refused with
+  `EntryCapacityReachedException`, and the UI shows an upgrade prompt.
+- Imports and backup restores keep what fits and discard the rest, warning
+  beforehand how many will be left out. They never fail wholesale — refusing a
+  25-entry backup outright would leave a user unable to recover any of it.
+- Reading, searching, editing, copying and deleting are never restricted.
+
+### Downgrades never destroy data
+
+If entitlement is lost while the vault holds more than the new tier allows — a
+refund, a purchase made on another account, a reinstall before restoration — the
+app **never** deletes, hides, truncates, exports or locks anything. Every entry
+stays visible and editable, the UI explains the state, and deleting is the way
+back under the limit. Verified by test with 150 entries against a 20-entry cap,
+including across a lock/unlock cycle to prove nothing was truncated on disk.
+
+### Purchase restoration and offline behaviour
+
+One-time products are restored by re-querying the store, which happens at startup
+and from **Restore purchases** on the Upgrade screen. Play is authoritative
+whenever it answers — including when it answers "nothing owned", so a refund can
+correct the cache downwards.
+
+Play being *unreachable* is not an answer. An unavailable or failing store leaves
+the cached entitlement untouched, so losing network never costs a paying user
+their capacity. Any exception from the billing layer is contained and treated as
+"no answer": billing cannot fail in a way that blocks the vault.
+
+The cache is not a plaintext preference. The tier is stored with an HMAC-SHA256
+tag computed over it, plus a per-install random id, using a key held in the
+Android Keystore that cannot be extracted from the device. Editing the stored
+tier invalidates the tag and the record is rejected. Every failure path — a
+missing tag, a mismatched tag, a Keystore key invalidated by a device restore —
+falls back to **Free** rather than throwing or failing open.
+
+**Assumptions and limitations, stated plainly:**
+
+- Client-side entitlement cannot be made tamper-proof. This raises forging a tier
+  from "edit a text file" to "defeat a hardware-backed key or patch the APK", and
+  no further. That is why Play remains the source of truth whenever it is
+  reachable, and why this is only a cache.
+- Failing closed to Free can temporarily understate what someone paid for, for
+  example after a device restore invalidates the Keystore key. A single "Restore
+  purchases" fixes it. The alternative — failing open — would hand every tier to
+  anyone able to corrupt a file.
+- The per-install id binds a cached record to this install, so it cannot be
+  copied to another device; it also means the cache does not survive a reinstall.
+  Restoration from Play is the intended path there, by design.
+
+### Current build status
+
+Google Play Billing is **not yet a dependency**. `NoBillingRepository` reports no
+store, so every install starts on Free and runs entirely offline, and the Upgrade
+screen shows "Coming soon" rather than pretending to start a transaction.
+
+This is deliberate: adding the Play Billing library introduces the
+`com.android.vending.BILLING` permission, and the store listing currently claims
+the app "does not request Android's internet permission at all". **Before
+enabling billing, re-check the merged manifest and update the listing, the
+privacy policy and the Data safety form to match whatever permissions actually
+ship.** Wiring in a real implementation is a one-line change in `ServiceLocator`;
+nothing above `BillingRepository` changes.
+
+### Debug tier override
+
+Debug builds carry a **Settings → Debug: force a tier** picker for exercising the
+higher capacities without billing. It lives in `src/debug`, so it is not compiled
+into a release APK — enforced by build variant rather than a runtime
+`BuildConfig.DEBUG` check, which would leave the code sitting in the shipped
+binary. Verified by scanning the release APK's dex for `DebugEntitlementOverride`,
+`entitlement_debug`, `debug_tier_override` and the settings row label: all four
+are present in the debug APK and absent from release.
+
+---
+
 ## 16. What is deliberately NOT here
 
 No server, REST API, SQL/Room/SQLite, cloud sync, account/registration, email or
 social login, ads, analytics, tracking, or any internet-dependent service. The
 architecture is kept small and auditable on purpose.
+
+Monetization adds none of that. Paid tiers are one-time purchases of vault
+capacity through Google Play; there are no subscriptions, no advertising SDKs
+and no behavioural analytics, and the vault itself never depends on billing, a
+network or a server (see 15b).

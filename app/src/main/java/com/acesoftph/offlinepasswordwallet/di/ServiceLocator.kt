@@ -5,7 +5,13 @@ import com.acesoftph.offlinepasswordwallet.BuildConfig
 import com.acesoftph.offlinepasswordwallet.data.backup.BackupManager
 import com.acesoftph.offlinepasswordwallet.data.repository.VaultRepository
 import com.acesoftph.offlinepasswordwallet.data.repository.VaultState
+import com.acesoftph.offlinepasswordwallet.data.repository.EntryCapacityPolicy
 import com.acesoftph.offlinepasswordwallet.data.storage.VaultFileStore
+import com.acesoftph.offlinepasswordwallet.entitlement.EntitlementManager
+import com.acesoftph.offlinepasswordwallet.entitlement.EntitlementOverrideFactory
+import com.acesoftph.offlinepasswordwallet.entitlement.KeystoreEntitlementStore
+import com.acesoftph.offlinepasswordwallet.entitlement.BillingRepository
+import com.acesoftph.offlinepasswordwallet.entitlement.NoBillingRepository
 import com.acesoftph.offlinepasswordwallet.security.AppLockManager
 import com.acesoftph.offlinepasswordwallet.security.KeyManager
 import com.acesoftph.offlinepasswordwallet.security.MasterPasswordManager
@@ -45,6 +51,10 @@ object ServiceLocator {
         private set
     lateinit var appLockManager: AppLockManager
         private set
+    lateinit var entitlementManager: EntitlementManager
+        private set
+    lateinit var billingRepository: BillingRepository
+        private set
 
     @Volatile
     private var initialized = false
@@ -54,7 +64,27 @@ object ServiceLocator {
         val app = context.applicationContext
 
         settingsRepository = SettingsRepository(app)
-        vaultRepository = VaultRepository(VaultFileStore(app))
+
+        // Entitlement is built before the vault so the vault can be given its
+        // capacity policy, but the dependency runs one way only: the entitlement
+        // layer never sees the vault, and the vault sees a plain
+        // EntryCapacityPolicy rather than anything tier- or billing-shaped
+        // (§46B). NoBillingRepository means every install starts FREE and
+        // entirely offline until billing is actually wired up (§46D).
+        billingRepository = NoBillingRepository()
+        entitlementManager = EntitlementManager(
+            store = KeystoreEntitlementStore(app),
+            billing = billingRepository,
+            override = EntitlementOverrideFactory.create(app),
+        ).apply { load() }
+
+        vaultRepository = VaultRepository(
+            store = VaultFileStore(app),
+            capacity = object : EntryCapacityPolicy {
+                override fun maxEntries() = entitlementManager.getMaximumEntries()
+                override fun capacityMessage() = entitlementManager.capacityMessage()
+            },
+        )
         masterPasswordManager = MasterPasswordManager(vaultRepository)
         recoveryManager = RecoveryManager(vaultRepository, RecoveryRateLimiter(app))
         backupManager = BackupManager(vaultRepository, appVersionName = BuildConfig.VERSION_NAME)

@@ -54,7 +54,7 @@ import com.acesoftph.offlinepasswordwallet.ui.components.StrengthMeter
 import com.acesoftph.offlinepasswordwallet.ui.components.WalletCard
 import com.acesoftph.offlinepasswordwallet.ui.theme.LocalWalletPalette
 import com.acesoftph.offlinepasswordwallet.util.ClipboardUtil
-import com.acesoftph.offlinepasswordwallet.tier.FreeTier
+import com.acesoftph.offlinepasswordwallet.ui.components.tierTitle
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -282,7 +282,7 @@ fun PasswordGeneratorScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(FreeTier.title("Password generator")) },
+                title = { Text(tierTitle("Password generator")) },
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {

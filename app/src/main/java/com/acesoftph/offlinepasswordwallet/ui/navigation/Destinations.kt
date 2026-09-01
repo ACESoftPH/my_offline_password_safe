@@ -21,6 +21,8 @@ object Dest {
     const val EXPORT_BACKUP = "export_backup"
     const val RESTORE_BACKUP = "restore_backup"
 
+    const val UPGRADE = "upgrade"
+
     fun detail(entryId: String) = "detail/$entryId"
     fun edit(entryId: String) = "edit/$entryId"
     const val NEW_ENTRY_ID = "new"
