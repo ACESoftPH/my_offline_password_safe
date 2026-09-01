@@ -23,17 +23,23 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.acesoftph.offlinepasswordwallet.di.ServiceLocator
 import com.acesoftph.offlinepasswordwallet.entitlement.ProductCatalog
+import com.acesoftph.offlinepasswordwallet.entitlement.PurchaseResult
+import com.acesoftph.offlinepasswordwallet.entitlement.SubscriptionTier
 import com.acesoftph.offlinepasswordwallet.entitlement.TierProduct
 import com.acesoftph.offlinepasswordwallet.ui.components.SectionHeader
 import com.acesoftph.offlinepasswordwallet.ui.components.WalletCard
@@ -48,24 +54,42 @@ import kotlinx.coroutines.launch
  * statements §46K requires: that these are one-time purchases rather than a
  * subscription, and that the vault stays local and encrypted regardless.
  *
- * Prices shown here come from [ProductCatalog] and are **planning** values.
- * Google Play is the source of truth for what a user is actually charged, in
- * their own currency (§46J), so the screen says so rather than presenting a
- * peso figure as final. Once billing is wired up these labels are replaced by
- * the store's own localized prices.
+ * ## Prices
  *
- * Purchasing is not live yet (§46D): the buttons explain that instead of
- * pretending to start a transaction. Showing a working-looking Buy button that
- * silently does nothing would be worse than saying plainly that it is not ready.
+ * Play's own localized price is used wherever the store gives us one (§46J).
+ * [ProductCatalog]'s peso figures are the fallback for a device that cannot
+ * reach Play, and are labelled as indicative when shown — they are planning
+ * values, and presenting one as final to someone who will be charged in another
+ * currency would be a lie.
+ *
+ * ## Upgrading
+ *
+ * One-time products have no proration mechanism in Play, so upgrading means
+ * buying the higher product and keeping the lower one. The screen says so
+ * outright above the buttons, because a user who expects the difference to be
+ * credited would otherwise find out only from their receipt.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UpgradeScreen(onBack: () -> Unit) {
+fun UpgradeScreen(activity: FragmentActivity?, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     val entitlement = ServiceLocator.entitlementManager
+    val billing = ServiceLocator.billingRepository
     val currentTier by entitlement.tier.collectAsStateWithLifecycle()
-    val billingLive = ServiceLocator.billingRepository.isAvailable
+
+    var storePrices by remember { mutableStateOf<Map<SubscriptionTier, String>>(emptyMap()) }
+    var storeReady by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+
+    // Connecting to Play and fetching prices is the first thing that touches the
+    // network in this app's life. It is deliberately confined to this screen: a
+    // user who never opens Upgrade never causes a single connection.
+    LaunchedEffect(Unit) {
+        val products = billing.queryProducts()
+        storePrices = products.associate { it.tier to it.formattedPrice }
+        storeReady = billing.isAvailable
+    }
 
     Scaffold(
         topBar = {
@@ -106,23 +130,38 @@ fun UpgradeScreen(onBack: () -> Unit) {
             ProductCatalog.all.forEach { product ->
                 TierCard(
                     product = product,
+                    storePrice = storePrices[product.tier],
                     isCurrent = product.tier == currentTier,
                     isRecommended = product.tier == ProductCatalog.recommended,
                     canBuy = product.tier.ordinal > currentTier.ordinal,
-                    billingLive = billingLive,
+                    enabled = storeReady && activity != null && !busy,
                     onBuy = {
+                        if (activity == null) return@TierCard
                         scope.launch {
-                            snackbar.showSnackbar(
-                                "In-app purchases are not enabled in this build yet.",
-                            )
+                            busy = true
+                            val result = billing.launchPurchase(activity, product.tier)
+                            // Play is the source of truth, so the entitlement is
+                            // re-derived from a fresh query rather than assumed
+                            // from the purchase result (§46E).
+                            if (result is PurchaseResult.Success ||
+                                result is PurchaseResult.AlreadyOwned
+                            ) {
+                                entitlement.refreshFromBilling()
+                            }
+                            busy = false
+                            result.message(product.tier)?.let { snackbar.showSnackbar(it) }
                         }
                     },
                 )
             }
 
             Text(
-                "Prices are indicative. Google Play shows the final price in your " +
-                    "own currency before you confirm anything.",
+                if (storePrices.isEmpty()) {
+                    "Prices shown are indicative. Google Play shows the final price " +
+                        "in your own currency before you confirm anything."
+                } else {
+                    "Prices come from Google Play and are what you will be charged."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp),
@@ -134,21 +173,31 @@ fun UpgradeScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Text(
+                "Each plan is bought outright. Moving up later means buying the " +
+                    "higher plan — Google Play does not credit the one you already own.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
             OutlinedButton(
                 onClick = {
                     scope.launch {
+                        busy = true
                         val tier = entitlement.refreshFromBilling()
+                        storeReady = billing.isAvailable
+                        busy = false
                         snackbar.showSnackbar(
-                            if (billingLive) {
+                            if (billing.isAvailable) {
                                 "Purchases restored. Current plan: ${tier.displayName}."
                             } else {
-                                "No store available, so there is nothing to restore. " +
-                                    "Current plan: ${tier.displayName}."
+                                "Google Play is not reachable, so there is nothing to " +
+                                    "restore right now. Current plan: ${tier.displayName}."
                             },
                         )
                     }
                 },
+                enabled = !busy,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp, bottom = 24.dp)
@@ -158,13 +207,26 @@ fun UpgradeScreen(onBack: () -> Unit) {
     }
 }
 
+/** What to tell the user, or null when the outcome speaks for itself. */
+private fun PurchaseResult.message(tier: SubscriptionTier): String? = when (this) {
+    is PurchaseResult.Success -> "Thank you. Your plan is now ${this.tier.displayName}."
+    // Backing out of a payment sheet is a decision, not an event worth narrating.
+    PurchaseResult.Cancelled -> null
+    PurchaseResult.Pending ->
+        "Google Play is still processing that payment. Your plan updates as soon " +
+            "as it clears — your vault is unaffected in the meantime."
+    PurchaseResult.AlreadyOwned -> "You already own ${tier.displayName}. Plan restored."
+    is PurchaseResult.Failed -> reason
+}
+
 @Composable
 private fun TierCard(
     product: TierProduct,
+    storePrice: String?,
     isCurrent: Boolean,
     isRecommended: Boolean,
     canBuy: Boolean,
-    billingLive: Boolean,
+    enabled: Boolean,
     onBuy: () -> Unit,
 ) {
     val palette = LocalWalletPalette.current
@@ -209,7 +271,7 @@ private fun TierCard(
                 modifier = Modifier.padding(top = 6.dp),
             )
             Text(
-                product.priceLabel,
+                storePrice?.let { "$it one-time" } ?: product.priceLabel,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = palette.accent,
@@ -218,13 +280,19 @@ private fun TierCard(
             if (canBuy) {
                 Button(
                     onClick = onBuy,
-                    enabled = billingLive,
+                    enabled = enabled,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 12.dp)
                         .testTag("buy_${product.tier.name.lowercase()}"),
                 ) {
-                    Text(if (billingLive) "Upgrade to ${product.tier.displayName}" else "Coming soon")
+                    Text(
+                        if (enabled) {
+                            "Upgrade to ${product.tier.displayName}"
+                        } else {
+                            "Unavailable right now"
+                        },
+                    )
                 }
             }
         }

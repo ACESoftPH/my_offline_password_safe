@@ -47,12 +47,24 @@ class EntitlementManagerTest {
             if (throws) error("store exploded")
             return status
         }
+
+        override suspend fun queryProducts(): List<StoreProduct> = emptyList()
+        override suspend fun launchPurchase(
+            activity: android.app.Activity,
+            tier: SubscriptionTier,
+        ): PurchaseResult = PurchaseResult.Failed("not used in this test")
     }
 
     /** A store whose answer can change mid-session, as a real one's does. */
     private class MutableBilling(var status: BillingStatus) : BillingRepository {
         override val isAvailable = true
         override suspend fun queryOwnedTier(): BillingStatus = status
+
+        override suspend fun queryProducts(): List<StoreProduct> = emptyList()
+        override suspend fun launchPurchase(
+            activity: android.app.Activity,
+            tier: SubscriptionTier,
+        ): PurchaseResult = PurchaseResult.Failed("not used in this test")
     }
 
     private class FakeOverride(private var tier: SubscriptionTier?) : EntitlementOverride {

@@ -233,6 +233,6 @@ private fun NavGraphBuilder.vaultGraph(navController: NavHostController, activit
         ExportBackupScreen(onBack = { navController.popBackStack() })
     }
     composable(Dest.UPGRADE) {
-        UpgradeScreen(onBack = { navController.popBackStack() })
+        UpgradeScreen(activity = activity, onBack = { navController.popBackStack() })
     }
 }

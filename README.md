@@ -822,21 +822,61 @@ falls back to **Free** rather than throwing or failing open.
   anyone able to corrupt a file.
 - The per-install id binds a cached record to this install, so it cannot be
   copied to another device; it also means the cache does not survive a reinstall.
-  Restoration from Play is the intended path there, by design.
+  Restoration from Play is the intended path there, and now runs automatically at
+  startup as well as from the Upgrade screen's **Restore purchases**.
 
-### Current build status
+### Google Play Billing
 
-Google Play Billing is **not yet a dependency**. `NoBillingRepository` reports no
-store, so every install starts on Free and runs entirely offline, and the Upgrade
-screen shows "Coming soon" rather than pretending to start a transaction.
+Billing is live, using **Play Billing Library 9.1.0**. All tiers are one-time,
+non-consumed `INAPP` products; no subscription API is used anywhere (§46M).
+`PlayBillingRepository` is the only file in the app that imports a billing type,
+and swapping `NoBillingRepository` back in is still a one-line change in
+`ServiceLocator` that disables every purchase path and changes nothing else.
 
-This is deliberate: adding the Play Billing library introduces the
-`com.android.vending.BILLING` permission, and the store listing currently claims
-the app "does not request Android's internet permission at all". **Before
-enabling billing, re-check the merged manifest and update the listing, the
-privacy policy and the Data safety form to match whatever permissions actually
-ship.** Wiring in a real implementation is a one-line change in `ServiceLocator`;
-nothing above `BillingRepository` changes.
+**Upgrades cost full price.** Play offers proration and replacement for
+subscriptions only, so moving from Plus to Pro means buying Pro and keeping Plus;
+`highestOwnedTier` then takes the higher of the two. The Upgrade screen states
+this before the buttons rather than leaving it to a receipt.
+
+Only settled purchases grant capacity. A `PENDING` purchase — cash, a bank
+transfer Play has not cleared — grants nothing until it settles, and is reported
+as pending rather than as a failure. Purchases are acknowledged on every query,
+because Play auto-refunds anything unacknowledged after three days.
+
+#### Permissions this costs
+
+Adding the library changed the merged manifest. The release build now declares:
+
+| Permission | Source |
+|---|---|
+| `com.android.vending.BILLING` | Play Billing library |
+| `android.permission.INTERNET` | Play Billing library (transitive) |
+| `android.permission.ACCESS_NETWORK_STATE` | Play Billing library (transitive) |
+| `android.permission.USE_BIOMETRIC` / `USE_FINGERPRINT` | the app itself |
+
+The library also pulls in `play-services-base`, `play-services-basement`,
+`play-services-tasks`, `play-services-location` and Google's `datatransport`
+stack. No location permission ends up in the merged manifest, but the location
+library is linked in. Release APK grew from 2.19 MB to 2.50 MB.
+
+**The app still makes no network call of its own.** Nothing in the vault, the
+crypto, the import/export or the settings touches a socket, and the only code
+that can reach the network is the billing client — reached only from the Upgrade
+screen, so a user who never opens it never causes a connection. But "cannot send
+your data anywhere, verifiable in the Permissions section" is no longer literally
+true and **must be corrected in the store listing, the privacy policy page and
+the Data safety form** before this build is published.
+
+#### No server-side receipt verification
+
+Purchase signatures are not verified. Doing it properly needs a server to hold
+the key and check the receipt, and this app deliberately has none. Verifying
+in-process against an embedded public key is theatre — whoever can forge a
+purchase can patch out the check.
+
+The exposure is bounded and is not a security issue: a forged entitlement buys
+vault **capacity** and nothing else. No key material, no decryption, no access to
+anyone else's data (§46O). The cost of being wrong is revenue, not passwords.
 
 ### Debug tier override
 

@@ -4,6 +4,8 @@ import com.acesoftph.offlinepasswordwallet.entitlement.BillingRepository
 import com.acesoftph.offlinepasswordwallet.entitlement.BillingStatus
 import com.acesoftph.offlinepasswordwallet.entitlement.EntitlementManager
 import com.acesoftph.offlinepasswordwallet.entitlement.EntitlementStore
+import com.acesoftph.offlinepasswordwallet.entitlement.PurchaseResult
+import com.acesoftph.offlinepasswordwallet.entitlement.StoreProduct
 import com.acesoftph.offlinepasswordwallet.entitlement.SubscriptionTier
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
@@ -44,6 +46,12 @@ class EntitlementWiringTest {
             if (throws) error("store exploded")
             return status
         }
+
+        override suspend fun queryProducts(): List<StoreProduct> = emptyList()
+        override suspend fun launchPurchase(
+            activity: android.app.Activity,
+            tier: SubscriptionTier,
+        ): PurchaseResult = PurchaseResult.Failed("not used in this test")
     }
 
     @Test

@@ -11,7 +11,7 @@ import com.acesoftph.offlinepasswordwallet.entitlement.EntitlementManager
 import com.acesoftph.offlinepasswordwallet.entitlement.EntitlementOverrideFactory
 import com.acesoftph.offlinepasswordwallet.entitlement.KeystoreEntitlementStore
 import com.acesoftph.offlinepasswordwallet.entitlement.BillingRepository
-import com.acesoftph.offlinepasswordwallet.entitlement.NoBillingRepository
+import com.acesoftph.offlinepasswordwallet.entitlement.PlayBillingRepository
 import com.acesoftph.offlinepasswordwallet.security.AppLockManager
 import com.acesoftph.offlinepasswordwallet.security.KeyManager
 import com.acesoftph.offlinepasswordwallet.security.MasterPasswordManager
@@ -69,9 +69,14 @@ object ServiceLocator {
         // capacity policy, but the dependency runs one way only: the entitlement
         // layer never sees the vault, and the vault sees a plain
         // EntryCapacityPolicy rather than anything tier- or billing-shaped
-        // (§46B). NoBillingRepository means every install starts FREE and
-        // entirely offline until billing is actually wired up (§46D).
-        billingRepository = NoBillingRepository()
+        // (§46B).
+        //
+        // This is the one line §46C promised would be the whole cost of enabling
+        // billing. Swapping NoBillingRepository() back in here disables every
+        // purchase path in the app and changes nothing else. Constructing the
+        // client does not connect to anything; the first connection happens on
+        // the first query, off the main thread.
+        billingRepository = PlayBillingRepository(app)
         entitlementManager = EntitlementManager(
             store = KeystoreEntitlementStore(app),
             billing = billingRepository,
