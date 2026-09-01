@@ -34,7 +34,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.acesoftph.offlinepasswordwallet.di.ServiceLocator
 import com.acesoftph.offlinepasswordwallet.entitlement.ProductCatalog
-import com.acesoftph.offlinepasswordwallet.entitlement.SubscriptionTier
 import com.acesoftph.offlinepasswordwallet.entitlement.TierProduct
 import com.acesoftph.offlinepasswordwallet.ui.components.SectionHeader
 import com.acesoftph.offlinepasswordwallet.ui.components.WalletCard
@@ -231,7 +230,3 @@ private fun TierCard(
         }
     }
 }
-
-/** Whether [tier] is worth offering as an upgrade from [from]. */
-internal fun isUpgradeFrom(from: SubscriptionTier, tier: SubscriptionTier): Boolean =
-    tier.ordinal > from.ordinal

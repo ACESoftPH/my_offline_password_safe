@@ -24,6 +24,20 @@ class EntitlementManagerTest {
         override fun clear() { cached = SubscriptionTier.FREE }
     }
 
+    /**
+     * A store that fails closed to FREE on read, which is exactly what
+     * [KeystoreEntitlementStore] does when its Keystore key is unavailable --
+     * after a device restore, or transiently. [FakeStore] never fails, so it
+     * cannot catch a reload that silently demotes a paying user.
+     */
+    private class FailingReadStore(var cached: SubscriptionTier) : EntitlementStore {
+        var failReads = false
+        override fun readCachedTier() =
+            if (failReads) SubscriptionTier.FREE else cached
+        override fun writeCachedTier(tier: SubscriptionTier) { cached = tier }
+        override fun clear() { cached = SubscriptionTier.FREE }
+    }
+
     private class FakeBilling(
         private val status: BillingStatus,
         override val isAvailable: Boolean = true,
@@ -33,6 +47,12 @@ class EntitlementManagerTest {
             if (throws) error("store exploded")
             return status
         }
+    }
+
+    /** A store whose answer can change mid-session, as a real one's does. */
+    private class MutableBilling(var status: BillingStatus) : BillingRepository {
+        override val isAvailable = true
+        override suspend fun queryOwnedTier(): BillingStatus = status
     }
 
     private class FakeOverride(private var tier: SubscriptionTier?) : EntitlementOverride {
@@ -174,7 +194,69 @@ class EntitlementManagerTest {
         assertEquals(SubscriptionTier.PLUS, m.refreshFromBilling())
     }
 
+    @Test
+    fun `a store that stops answering cannot demote a tier Play already confirmed`() = runTest {
+        // The regression: the "not an answer" branch used to re-read the cache.
+        // That reads as a no-op and is not -- the real store fails closed to
+        // FREE, so a Keystore hiccup on a later refresh would take PRO away from
+        // someone Play had already confirmed owns it (§46F).
+        val store = FailingReadStore(SubscriptionTier.FREE)
+        val billing = MutableBilling(BillingStatus.Owned(SubscriptionTier.PRO))
+        val m = EntitlementManager(store, billing).also { it.load() }
+        assertEquals(SubscriptionTier.PRO, m.refreshFromBilling())
+
+        // Same session, later: offline, and the Keystore has stopped cooperating.
+        store.failReads = true
+        billing.status = BillingStatus.Unavailable
+        assertEquals(
+            "an unreachable store must not undo what Play confirmed",
+            SubscriptionTier.PRO,
+            m.refreshFromBilling(),
+        )
+
+        billing.status = BillingStatus.Failed("timeout")
+        assertEquals(
+            "nor may a failing one",
+            SubscriptionTier.PRO,
+            m.refreshFromBilling(),
+        )
+    }
+
+    @Test
+    fun `an unreachable store does not re-read the cache at all`() = runTest {
+        val store = FailingReadStore(SubscriptionTier.ULTIMATE)
+        val m = EntitlementManager(store, FakeBilling(BillingStatus.Unavailable, isAvailable = false))
+        m.load()
+        assertEquals(SubscriptionTier.ULTIMATE, m.getCurrentTier())
+
+        store.failReads = true
+        assertEquals(
+            "a store with no answer must cost nothing, not even a cache read",
+            SubscriptionTier.ULTIMATE,
+            m.refreshFromBilling(),
+        )
+    }
+
     // -- §46D debug override -------------------------------------------------
+
+    @Test
+    fun `a debug override still wins after Play answers`() = runTest {
+        // Otherwise the tier flow (titles, the Settings plan row) and
+        // getCurrentTier() (every capacity check) disagree, and a debug build
+        // reads "Pro" over a 20-entry limit.
+        val store = FakeStore(SubscriptionTier.FREE)
+        val m = EntitlementManager(
+            store,
+            FakeBilling(BillingStatus.Owned(SubscriptionTier.PRO)),
+            FakeOverride(SubscriptionTier.FREE),
+        ).also { it.load() }
+
+        m.refreshFromBilling()
+
+        assertEquals(SubscriptionTier.FREE, m.getCurrentTier())
+        assertEquals("the flow must agree with getCurrentTier()", SubscriptionTier.FREE, m.tier.value)
+        assertEquals("Play's answer is still cached underneath", SubscriptionTier.PRO, store.cached)
+    }
 
     @Test
     fun `a debug override takes precedence and is reversible`() {

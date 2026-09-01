@@ -84,14 +84,20 @@ class KeystoreEntitlementStore(context: Context) : EntitlementStore {
         return SubscriptionTier.parseOrFree(tier)
     }
 
-    /** Caches [tier]. A failure to sign clears the record rather than storing it unsigned. */
+    /**
+     * Caches [tier], signed. Never stores a record it could not sign.
+     *
+     * A signing failure leaves any existing record alone rather than clearing
+     * it. Clearing looks safer and is not: the common cause is the Keystore key
+     * being briefly unavailable, and in that case a refresh whose whole purpose
+     * was to *confirm* a paid tier would instead destroy the cache and leave a
+     * paying user on Free at the next offline launch. Keeping the old record
+     * cannot fail open either -- reading it needs the same key, so a key that is
+     * genuinely gone still yields Free (§46F).
+     */
     override fun writeCachedTier(tier: SubscriptionTier) {
         val installId = existingInstallId() ?: newInstallId()
-        val tag = runCatching { tagFor(tier.name, installId) }.getOrNull()
-        if (tag == null) {
-            clear()
-            return
-        }
+        val tag = runCatching { tagFor(tier.name, installId) }.getOrNull() ?: return
         prefs.edit()
             .putString(KEY_TIER, tier.name)
             .putString(KEY_TAG, tag)

@@ -46,7 +46,16 @@ class EntitlementManager(
     /** Observable current tier, for UI that must react to a restore or upgrade. */
     val tier: StateFlow<SubscriptionTier> = _tier.asStateFlow()
 
-    /** Loads the cached tier. Cheap, synchronous, safe to call before unlock. */
+    /**
+     * Loads the cached tier. Synchronous, and safe to call before unlock.
+     *
+     * Free of Keystore work only until something has actually been cached; after
+     * a purchase this reads the cache, which means a Keystore round-trip. It is
+     * still called synchronously at startup, on purpose: doing it in the
+     * background would start every cold start on Free and visibly demote a
+     * paying user for a frame -- retitling screens and, worse, briefly handing
+     * the vault a 20-entry capacity policy -- before flipping back.
+     */
     fun load() {
         _tier.value = override.overriddenTier() ?: store.readCachedTier()
     }
@@ -124,11 +133,24 @@ class EntitlementManager(
                 // Play has spoken, including when it says FREE -- a refund or a
                 // purchase made on another account must be able to take a tier
                 // away, or the cache could never be corrected downwards.
+                //
+                // The override still wins over Play in the flow, exactly as it
+                // does in load(). Writing status.tier straight into _tier would
+                // let a debug build show "Pro" in every title bar while
+                // getCurrentTier() -- and therefore every capacity check -- still
+                // returned the forced tier.
                 store.writeCachedTier(status.tier)
-                _tier.value = status.tier
+                _tier.value = override.overriddenTier() ?: status.tier
             }
-            // Not an answer. Keep what we had.
-            BillingStatus.Unavailable, is BillingStatus.Failed -> load()
+            // Not an answer, so there is nothing to reconcile: keep what we have.
+            //
+            // Deliberately NOT load(). Re-reading the cache here would look like
+            // a no-op but is not: the store fails closed to FREE on any problem
+            // -- a Keystore key invalidated by a device restore, a transient
+            // getEntry() failure -- so a user who was PRO a moment ago would be
+            // silently downgraded by the very branch whose job is to leave them
+            // alone (§46F). An unreachable store must cost nothing at all.
+            BillingStatus.Unavailable, is BillingStatus.Failed -> Unit
         }
         return getCurrentTier()
     }
@@ -140,7 +162,10 @@ class EntitlementManager(
     /** Whether this build can fake a tier. False in release. */
     val supportsDebugOverride: Boolean get() = override.isSupported
 
-    /** Forces a tier in debug builds; a no-op in release. */
+    /** The tier currently being forced, or null when none is. Always null in release. */
+    fun debugTier(): SubscriptionTier? = override.overriddenTier()
+
+    /** Forces a tier in debug builds, or clears the override with null; a no-op in release. */
     fun setDebugTier(tier: SubscriptionTier?) {
         override.setOverride(tier)
         load()

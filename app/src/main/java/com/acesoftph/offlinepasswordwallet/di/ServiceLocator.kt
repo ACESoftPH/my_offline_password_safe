@@ -96,9 +96,40 @@ object ServiceLocator {
         )
 
         bindAutoLock(applicationScope, vaultRepository, appLockManager)
+        reconcileEntitlement(applicationScope, entitlementManager)
 
         initialized = true
     }
+
+    /**
+     * Asks the store what the user owns, once, at startup (§46E).
+     *
+     * One-time products carry no expiry and no receipt to renew, so restoration
+     * *is* a re-query: this is the same call the Upgrade screen's "Restore
+     * purchases" button makes, and between them they are the whole restoration
+     * mechanism. Without it a reinstall would sit on the FREE fallback until the
+     * user happened to find that button, because the integrity-protected cache is
+     * bound to the install and deliberately does not survive one.
+     *
+     * Fire-and-forget on the application scope, never on a startup path anything
+     * waits for. [EntitlementManager.refreshFromBilling] contains its own
+     * failures and treats an unreachable store as "no answer", so the worst case
+     * here is that the cached tier stays exactly as it was. Nothing about the
+     * vault, unlocking or decryption waits on this coroutine or can be broken by
+     * it (§46O, §46P.13).
+     *
+     * With [NoBillingRepository] wired in this is a no-op that resolves to the
+     * cache. It is wired now anyway so that dropping in a real
+     * [BillingRepository] is the one-line change §46C promises, rather than a
+     * one-line change plus remembering this call.
+     *
+     * Extracted from [init] for the same reason as [bindAutoLock]: so the
+     * contract can be asserted without process-wide singleton state.
+     */
+    fun reconcileEntitlement(
+        scope: CoroutineScope,
+        manager: EntitlementManager,
+    ): Job = scope.launch { manager.refreshFromBilling() }
 
     /**
      * Drives the auto-lock timer from the vault's own lock state.

@@ -84,6 +84,7 @@ fun SettingsScreen(
     val entitlement = ServiceLocator.entitlementManager
     val tier by entitlement.tier.collectAsStateWithLifecycle()
     var showDebugTiers by remember { mutableStateOf(false) }
+    var forcedTier by remember { mutableStateOf(entitlement.debugTier()) }
 
     /**
      * Turns the setting off AND destroys any key material, so the toggle can never
@@ -183,25 +184,43 @@ fun SettingsScreen(
                 if (showDebugTiers) {
                     WalletCard {
                         Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                            SubscriptionTier.entries.forEach { option ->
+                            // The null option is not decoration: without a way back
+                            // to "no override", one tap would pin the tier for the
+                            // life of the install and the real Play/cache path --
+                            // including the startup reconciliation -- could not be
+                            // exercised again without clearing app data.
+                            //
+                            // Selection tracks the override itself rather than the
+                            // effective tier, which are different things: forcing
+                            // Free while the cache already says Free changes no
+                            // tier at all, and a radio driven by the tier would
+                            // not move.
+                            (listOf(null) + SubscriptionTier.entries).forEach { option ->
+                                val select = {
+                                    forcedTier = option
+                                    entitlement.setDebugTier(option)
+                                }
                                 Row(
                                     Modifier
                                         .fillMaxWidth()
-                                        .selectable(
-                                            selected = tier == option,
-                                            onClick = { entitlement.setDebugTier(option) },
-                                        )
+                                        .selectable(selected = forcedTier == option, onClick = select)
                                         .padding(horizontal = 12.dp, vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     RadioButton(
-                                        selected = tier == option,
-                                        onClick = { entitlement.setDebugTier(option) },
-                                        modifier = Modifier.testTag("debug_tier_${option.name}"),
+                                        selected = forcedTier == option,
+                                        onClick = select,
+                                        modifier = Modifier.testTag(
+                                            "debug_tier_${option?.name ?: "NONE"}",
+                                        ),
                                     )
                                     Text(
-                                        "${option.displayName} · " +
-                                            ProductCatalog.productFor(option).capacityLabel,
+                                        if (option == null) {
+                                            "No override · use the real entitlement"
+                                        } else {
+                                            "${option.displayName} · " +
+                                                ProductCatalog.productFor(option).capacityLabel
+                                        },
                                     )
                                 }
                             }
