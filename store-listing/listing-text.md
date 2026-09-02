@@ -14,7 +14,7 @@ Verify lengths after any edit: `python store-listing/check-lengths.py`
 | App name | 30 | 9 |
 | Short description | 80 | 74 |
 | Full description | 4000 | 3992 |
-| Release notes (per language) | 500 | 472 |
+| Release notes (per language) | 500 | 493 |
 
 ---
 
@@ -91,9 +91,37 @@ Open source: https://github.com/ACESoftPH/my_offline_password_safe
 
 ---
 
-## Release notes — production 1.0.0
+## Release notes — 1.1.0 (versionCode 2)
 
 *Field: "What's new in this release". 500 characters per language.*
+
+**These are the notes for the current build.** It is the first one containing
+in-app purchases, so it is also the first that must go out against the revised
+listing text and privacy policy.
+
+```
+More room, if you need it.
+
+The free vault still holds 20 entries. You can now buy more capacity as a one-time purchase — Plus 100, Pro 500, Ultimate 1,000, or Unlimited.
+
+• One-time purchases, not subscriptions. Nothing renews.
+• Every other feature is identical on every tier, including free.
+• Your existing entries are never affected by a limit.
+• Your vault stays encrypted on your device. Purchases are handled by Google Play.
+
+Already bought one? Settings → Upgrade → Restore purchases.
+```
+
+## Release notes — 1.0.0 (versionCode 1, superseded)
+
+Kept only for reference. This build had no in-app purchases and no internet
+permission, and its notes say so. **Do not paste these against the 1.1.0
+bundle** — they describe an app that behaves differently from the one being
+uploaded.
+
+If versionCode 1 was never published to any track, it simply never shipped, and
+1.1.0 is the first public release. Say "First public release." in that case
+rather than implying an upgrade from something nobody had.
 
 ```
 First public release.
@@ -108,28 +136,6 @@ Lock Nest stores your passwords in a single encrypted file on your device. No ac
 • CSV import and export
 
 Please export an encrypted backup before uninstalling — data cannot be recovered otherwise.
-```
-
-> **1.0.0 has not shipped with in-app purchases.** If billing goes out in the
-> first public release, use the 1.1.0 notes below instead and delete this block —
-> two sets of release notes describing the same APK is how a listing ends up
-> contradicting itself.
-
-## Release notes — 1.1.0, the release that adds purchases
-
-*Use these only for the build that actually contains billing.*
-
-```
-More room, if you need it.
-
-The free vault still holds 20 entries. You can now buy more capacity as a one-time purchase — Plus 100, Pro 500, Ultimate 1,000, or Unlimited.
-
-• One-time purchases, not subscriptions. Nothing renews.
-• Every other feature is identical on every tier, including free.
-• Your existing entries are never affected by a limit.
-• Your vault stays encrypted on your device. Purchases are handled by Google Play.
-
-Restore a previous purchase from Settings → Upgrade → Restore purchases.
 ```
 
 ### Template for later releases

@@ -28,7 +28,7 @@ to run a closed test before they can apply for production access: at least
 - [ ] Data safety form submitted — no data collected, no data shared
 - [ ] Privacy policy URL set to `https://acesoftph.github.io/my_offline_password_safe/`
 - [ ] Target audience set to an adult band (18+, or 13+ at youngest)
-- [ ] `LockNest-1.0.0.aab` built and signed
+- [ ] `LockNest-1.1.0.aab` built and signed
 - [ ] **12–15 real people** who have agreed in advance to take part
 
 If the build being tested **contains in-app purchases**, these are required too:
@@ -64,11 +64,11 @@ Play Console → **Testing → Closed testing → Testers** tab → **Create ema
 
 Play Console → **Testing → Closed testing → Create new release**.
 
-- Upload `LockNest-1.0.0.aab`.
+- Upload `LockNest-1.1.0.aab`.
 - Accept **Play App Signing** when offered. Google then holds the app signing key
   and your `keystore/release.jks` becomes the *upload key* — which means if you
   ever lose it, Google can reset it rather than you losing the listing forever.
-- Release name: `1.0.0 (1)`.
+- Release name: `1.1.0 (2)`.
 - Release notes: see the template at the bottom of this file.
 - Roll out to the closed track.
 
