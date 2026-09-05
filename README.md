@@ -161,6 +161,11 @@ can never sit behind the lock screen.
 
 ## 4. Encryption architecture
 
+> US export control: every algorithm below is a published standard resolved by
+> the Android platform's own JCA providers — the app bundles no cryptographic
+> implementation. See [EXPORT-COMPLIANCE.md](EXPORT-COMPLIANCE.md) for the ECCN
+> classification, the evidence, and the obligations that code cannot discharge.
+
 ### The envelope (`vault.json`)
 
 ```jsonc
