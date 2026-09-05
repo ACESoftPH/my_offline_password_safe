@@ -91,7 +91,7 @@ Source code: https://github.com/ACESoftPH/my_offline_password_safe
 
 ---
 
-## Release notes — 1.1.0 (versionCode 2)
+## Release notes — 1.1.0 (versionCode 3)
 
 *Field: "What's new in this release". 500 characters per language.*
 

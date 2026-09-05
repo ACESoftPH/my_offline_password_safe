@@ -1,8 +1,13 @@
 # US export compliance — encryption
 
 **Product:** Lock Nest (`com.acesoftph.offlinepasswordwallet`)
-**Assessed against:** 1.1.0 (versionCode 2), commit `68935ce`
+**Assessed against:** 1.1.0 (versionCode 3)
 **Last verified:** 2026-09-05
+
+> The cryptographic surface — algorithms, key sizes, KDF parameters, dependencies
+> and native libraries — is unchanged since commit `68935ce`, where it was first
+> assessed. Later commits altered UI copy, the target API level and documentation
+> only. Re-verify with the commands in §2 before relying on this line.
 
 This document records why Lock Nest's use of encryption is believed to qualify
 for mass-market treatment under the US Export Administration Regulations (EAR),

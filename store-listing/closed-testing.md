@@ -68,7 +68,7 @@ Play Console → **Testing → Closed testing → Create new release**.
 - Accept **Play App Signing** when offered. Google then holds the app signing key
   and your `keystore/release.jks` becomes the *upload key* — which means if you
   ever lose it, Google can reset it rather than you losing the listing forever.
-- Release name: `1.1.0 (2)`.
+- Release name: `1.1.0 (3)`.
 - Release notes: see the template at the bottom of this file.
 - Roll out to the closed track.
 
