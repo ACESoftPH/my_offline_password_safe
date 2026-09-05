@@ -118,8 +118,9 @@ Review of this application typically takes a few days.
 > **Lock Nest — closed test**
 >
 > Thanks for helping test my Android password manager. It stores passwords in an
-> encrypted file on your phone — there's no account, no cloud, and the app has no
-> internet permission at all.
+> encrypted file on your phone — no account, no cloud, and nothing you save is
+> ever uploaded. The app does have internet access, but only so Google Play can
+> sell and restore the optional capacity upgrades; it makes no other connection.
 >
 > **To join:**
 > 1. Open this link on your phone, signed in with the Google account you gave me:

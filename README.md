@@ -711,8 +711,10 @@ Additional constraints:
 
 ## 15. Backup considerations
 
-- The app does **not** synchronize with any cloud service and requests no network
-  access. It is entirely offline.
+- The app does **not** synchronize with any cloud service, and makes no network
+  call of its own. The `INTERNET` permission in the merged manifest comes from
+  Play Billing (§15b) and is used only to buy and restore capacity upgrades;
+  nothing in the vault is ever transmitted.
 - Android Auto Backup / cloud backup / device-to-device transfer are disabled for
   every data domain, so the encrypted vault and Keystore-wrapped key material are
   not silently copied off the device.

@@ -6,8 +6,10 @@ The questionnaire is filled in by the developer and the ratings (IARC) are issue
 automatically from the answers. Answer honestly: a rating obtained from wrong
 answers can be invalidated and the app removed.
 
-For this app almost everything is **No**, because it is a single-user offline
-utility with no content, no communication features, and no network access at all.
+For this app almost everything is **No**, because it is a single-user utility
+with no content and no communication features. Its only network access is Google
+Play billing, which carries no user content and is not a communication channel
+between users.
 
 ---
 
@@ -77,8 +79,9 @@ utility with no content, no communication features, and no network access at all
 
 > The last one is the only question that deserves a second's thought. The app
 > does let a person type text in, but nothing is ever transmitted, published, or
-> visible to any other user. There is no sharing mechanism and no network
-> permission. So the answer is **No**.
+> visible to any other user. There is no sharing mechanism, and the one network
+> path that exists — Google Play billing — carries no user content. So the answer
+> is **No**.
 
 ---
 

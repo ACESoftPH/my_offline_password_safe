@@ -379,7 +379,8 @@ fun SettingsScreen(
             )
 
             Text(
-                "Lock Nest — no network permission, no cloud, no analytics.",
+                "Lock Nest — no cloud, no analytics, no trackers. The only network " +
+                    "access is Google Play billing, used to buy and restore upgrades.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

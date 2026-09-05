@@ -3,8 +3,19 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!--
-      NO android.permission.INTERNET is declared. This application is offline-only.
-      It also declares no network, location, contacts, camera or storage permissions.
+      This file declares NO permissions at all. That is not the same as the app
+      having none: Google Play's billing library merges in INTERNET,
+      ACCESS_NETWORK_STATE and com.android.vending.BILLING, and androidx.biometric
+      merges in USE_BIOMETRIC / USE_FINGERPRINT. Check the *merged* manifest, not
+      this one, before repeating any claim about permissions:
+
+        app/build/intermediates/merged_manifest/release/*/AndroidManifest.xml
+
+      The app itself opens no connection — nothing in the vault, crypto,
+      import/export or settings code touches a socket, and the billing client is
+      reached only from the Upgrade screen.
+
+      No location, contacts, camera or storage permission is declared or merged.
       File access for CSV import/export is done exclusively through the Storage
       Access Framework (ACTION_OPEN_DOCUMENT / ACTION_CREATE_DOCUMENT), which grants
       per-URI access without any broad storage permission.

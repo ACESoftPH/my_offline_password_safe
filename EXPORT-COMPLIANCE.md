@@ -111,8 +111,8 @@ system's, unmodified.
 
 | Assertion | How it is verified |
 |---|---|
-| No bundled crypto library (BouncyCastle, libsodium, Tink, OpenSSL, …) | `gradle/libs.versions.toml` contains no crypto dependency |
-| No native code | no `jniLibs` directory; no `ndk`, `externalNativeBuild` or `cmake` block in `app/build.gradle.kts` |
+| No bundled crypto library (BouncyCastle, libsodium, Tink, OpenSSL, …) | `gradle/libs.versions.toml` contains no crypto dependency, **and** the release dex contains no matching class-name string (see verification below) |
+| No cryptographic native code | the app contributes no native source: no `jniLibs` directory, no `ndk`/`externalNativeBuild`/`cmake` block in `app/build.gradle.kts`. The release artifact does carry two AndroidX native libraries — `libandroidx.graphics.path.so` (Compose path parsing) and `libdatastore_shared_counter.so` (DataStore cross-process counter) — neither of which performs any cryptographic operation. |
 | No proprietary or non-published algorithm | every algorithm string in `app/src/main/` is a JCA standard name (see verification below) |
 | No hand-rolled cipher, mode or KDF | no bit-level crypto primitives in the source; the only composition is standard multi-KEK key wrapping of one DEK |
 | No asymmetric cryptography, PKI or certificate handling in app code | no RSA/EC/`Signature`/`KeyPairGenerator` usage |
@@ -127,15 +127,24 @@ system's, unmodified.
 # Every algorithm string and JCA lookup in production code
 grep -rnE '"(AES|RSA|EC|PBKDF2|Hmac|SHA|MD5)[^"]*"|getInstance\(' app/src/main/java --include=*.kt
 
-# No native / bundled crypto
+# No native crypto source of our own
 find app/src -type d -name jniLibs -o -name "*.so"
 grep -nE "ndk|externalNativeBuild|cmake|jni" app/build.gradle.kts
 
 # No networking implemented by this app
 grep -rnE "HttpURLConnection|OkHttp|Retrofit|Socket|URL\(" app/src/main/java --include=*.kt
+
+# No crypto provider bundled in the shipped artifact
+unzip -o -q LockNest-<version>-release.apk "classes*.dex" -d /tmp/dex
+grep -aoiE "bouncycastle|spongycastle|com/google/crypto/tink|org/conscrypt|openssl|libsodium" /tmp/dex/*.dex
+
+# Which native libraries actually ship (expect only the two AndroidX ones above)
+unzip -l LockNest-<version>-release.apk | grep "lib/"
 ```
 
-At the assessed commit, the second and third commands return nothing.
+At the assessed commit the first, second and third commands return nothing, and
+the fourth lists only `libandroidx.graphics.path.so` and
+`libdatastore_shared_counter.so`.
 
 ---
 

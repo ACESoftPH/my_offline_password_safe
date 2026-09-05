@@ -86,7 +86,7 @@ That is the only way back in. Your data is only ever on your phone, so nobody ca
 
 No password manager can protect you from a compromised device, malware with enough privileges, a plaintext CSV you export and expose, a weak master password, or guessable security answers. The full security model and its limits are in the source repository.
 
-Open source: https://github.com/ACESoftPH/my_offline_password_safe
+Source code: https://github.com/ACESoftPH/my_offline_password_safe
 ```
 
 ---
@@ -173,6 +173,13 @@ policy. If you edit it, keep to these:
   password" is a demotion risk and reads badly.
 - **No fake urgency, testimonials, invented ratings, or "#1" claims.**
 - **No emoji in the title**; there is none in the description either.
-- **Every claim must match the shipped build.** The internet-permission claim in
-  particular is checkable by any reviewer against the Permissions section of the
-  listing — which is exactly why it is worth making.
+- **Every claim must match the shipped build**, and permissions are the easiest
+  claim for a reviewer to check — the Permissions section of the listing sits
+  right there next to the description. Since 1.1.0 the app *does* have
+  `INTERNET`, so the description says so plainly instead of claiming otherwise.
+  Verify against the **merged** manifest, never `app/src/main/AndroidManifest.xml`,
+  which declares no permissions of its own.
+- **Do not call the app "open source" while the repository has no LICENSE file.**
+  The repository is public, so "Source code:" is accurate; "open source" implies
+  a licence granting rights that has not been published. Add a licence, or leave
+  the wording as it is.
