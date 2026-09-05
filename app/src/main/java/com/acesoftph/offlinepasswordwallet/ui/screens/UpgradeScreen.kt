@@ -155,13 +155,15 @@ fun UpgradeScreen(activity: FragmentActivity?, onBack: () -> Unit) {
                 )
             }
 
+            // One statement that is true whether Play answered for all, some or
+            // none of the products. The previous version branched on
+            // storePrices.isEmpty(), which claimed every price came from Play as
+            // soon as a single one did -- while other rows still showed the
+            // planning figure.
             Text(
-                if (storePrices.isEmpty()) {
-                    "Prices shown are indicative. Google Play shows the final price " +
-                        "in your own currency before you confirm anything."
-                } else {
-                    "Prices come from Google Play and are what you will be charged."
-                },
+                "Anything marked indicative is a planning figure, not a quote. " +
+                    "Google Play shows the final price in your own currency before " +
+                    "you confirm anything.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp),
@@ -270,8 +272,16 @@ private fun TierCard(
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(top = 6.dp),
             )
+            // Play's price when we have it; otherwise the planning figure, marked
+            // on the row itself rather than in a footer. Play can answer for some
+            // products and not others, so a single footer cannot describe a mixed
+            // screen truthfully -- the label has to travel with the number (§46J).
             Text(
-                storePrice?.let { "$it one-time" } ?: product.priceLabel,
+                when {
+                    storePrice != null -> "$storePrice one-time"
+                    product.plannedPricePhp != null -> "${product.priceLabel} (indicative)"
+                    else -> product.priceLabel
+                },
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = palette.accent,

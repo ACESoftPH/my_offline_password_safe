@@ -245,8 +245,14 @@ fun VaultListScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(entitlement.capacityMessage())
                     if (next != null) {
+                        // Deliberately no price here (§46J). ProductCatalog's peso
+                        // figures are planning values; the only price a user may be
+                        // shown is Play's own, localized to what they will actually
+                        // be charged, and querying Play is confined to the Upgrade
+                        // screen so no other screen can cause a connection.
                         Text(
-                            "${next.priceLabel} · one-time purchase, no subscription.",
+                            "One-time purchase, not a subscription. Google Play shows " +
+                                "the price in your own currency on the next screen.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
