@@ -29,14 +29,26 @@ you prefer to upload the native captures.
 
 ### Screenshot order
 
+Play accepts **at most 8** phone screenshots. There are nine captures; the one
+held back is named in `EXCLUDE` in `frame-screenshots.py`, and file numbering
+stays aligned with `screenshots-raw/` rather than being closed up, so a raw
+capture and its framed version always share a name. Play orders by upload, not
+by filename, so the gap at 06 is harmless.
+
 1. **Locked vault** — the lock screen; nothing is revealed before authentication
-2. **Vault list** — entries with search
+2. **Vault list** — entries with search, and the `5 of 20 entries` capacity count
 3. **Entry detail** — password masked with `*`, per-field copy, reveal toggle
 4. **Password generator** — length slider, restricted symbol set
-5. **Security settings** — biometric unlock, auto-lock timeout
-6. **Encrypted backup** — export protected by its own passphrase
+5. **Security settings** — the current plan, biometric unlock, auto-lock timeout
+6. **Encrypted backup** — *captured, but held back from the upload set*
 7. **Custom fields** — add/edit entry, password strength meter
 8. **Reset master password** — the five-question flow
+9. **Plans and upgrade** — every tier, its capacity, and that these are one-time
+   purchases rather than a subscription
+
+Every screen title carries the current edition (`Password List - Free`,
+`Settings - Free`), so **any screenshot taken before the tier UI landed is
+visibly stale** and must be retaken, not reused.
 
 ## Listing text
 
@@ -89,7 +101,27 @@ policy does not contradict its own contents.
 
 ## Regenerating
 
-`generate.py` rebuilds the icon and feature graphic from the shipped vector. The
-screenshots were captured from the release build running on an emulator with the
-in-app "Block screenshots" setting temporarily turned off (the app sets
-`FLAG_SECURE` by default, which otherwise makes every capture come out black).
+`generate.py` rebuilds the icon and feature graphic from the shipped vector.
+
+`frame-screenshots.py` rebuilds `screenshots-phone/` from `screenshots-raw/` —
+scaling each 1080x2400 capture to fit 1080x1920 and centring it on the dark
+gradient. Run it after replacing any capture; it also refuses to write more than
+the 8 screenshots Play accepts. Framing used to be done by hand, which meant the
+framed set could drift from the raw set without anyone noticing.
+
+Capturing the raw images is still manual, on a device or emulator:
+
+1. Install the **release** build and set the emulator to **dark mode**.
+2. Complete first-run setup, then turn **"Block screenshots" off** in Settings.
+   The app sets `FLAG_SECURE` by default, which otherwise makes every capture
+   come out uniformly black — check for that before trusting a capture.
+3. Optionally enable SystemUI demo mode for a clean status bar:
+   `adb shell settings put global sysui_demo_allowed 1`, then broadcast
+   `com.android.systemui.demo` with `command enter`, `clock`, `battery`,
+   `network` and `notifications`.
+4. `adb exec-out screencap -p > screenshots-raw/NN-name.png`, then run
+   `python store-listing/frame-screenshots.py`.
+
+Because step 2 turns the setting off, the security-settings screenshot shows
+**"Block screenshots" toggled off** even though it ships **on**. That is a
+consequence of capturing at all, not a change in the default.
