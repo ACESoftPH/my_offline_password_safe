@@ -7,7 +7,7 @@ access in the app is Google Play's billing client, used solely to sell and
 restore the optional capacity upgrades.
 
 - Kotlin · Jetpack Compose · Material 3 · single Activity · manual DI
-- `minSdk 26`, `targetSdk 35`, `compileSdk 35`
+- `minSdk 26`, `targetSdk 36`, `compileSdk 36`
 - AES-256-GCM authenticated encryption + PBKDF2-HMAC-SHA256 key derivation
 - Android Keystore-backed, biometric-gated unlock (optional)
 - Five-question master-password **reset** (never "recovery of the old password")
@@ -73,7 +73,9 @@ publish another update.
 
 - `applicationId` is `com.acesoftph.offlinepasswordwallet` (Play rejects
   `com.example.*`).
-- `targetSdk 35`, meeting Play's current target-API requirement.
+- `targetSdk 36` (Android 16). Play's target-API floor rises every 31 August —
+  API 35 was the 2025 step, 36 the 2026 one. Confirm the current floor in Play
+  Console before each release rather than trusting this line.
 - **16 KB page size**: the two bundled native libraries
   (`libandroidx.graphics.path.so`, `libdatastore_shared_counter.so`) have
   `p_align = 0x4000` LOAD segments and the APK passes
