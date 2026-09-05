@@ -19,6 +19,19 @@ plugins {
  * the release build still works, it just produces an unsigned APK — so a fresh
  * clone builds without needing anyone's private key.
  */
+/**
+ * Single source for the version, used both by `defaultConfig` and by the artifact
+ * filenames below. They must not be able to disagree.
+ *
+ * `versionCode` is what Play treats as the identity of an upload; `versionName`
+ * is a marketing string with no uniqueness guarantee, and two different builds
+ * can legitimately carry the same one. So both go in the filename — a name
+ * carrying only "1.1.0" cannot tell two 1.1.0 bundles apart, which is exactly
+ * the confusion this is here to prevent.
+ */
+val appVersionName = "1.1.0"
+val appVersionCode = 3
+
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties().apply {
     if (keystorePropertiesFile.exists()) {
@@ -28,6 +41,26 @@ val keystoreProperties = Properties().apply {
 val hasReleaseSigning = keystoreProperties.getProperty("storeFile")
     ?.let { rootProject.file(it).exists() } == true
 
+/**
+ * Names every build artifact after the version it actually contains:
+ *
+ *     LockNest-1.1.0-3-release.aab
+ *     LockNest-1.1.0-3-release.apk
+ *     LockNest-1.1.0-3-debug.apk
+ *
+ * AGP appends the build type itself. Setting `archivesName` covers the bundle as
+ * well as the APKs, which per-output renaming does not, and uses only stable
+ * public API — no internal AGP classes and no deprecated `applicationVariants`.
+ *
+ * The filename is a convenience, not a source of truth: it is trivially wrong
+ * after a careless copy or rename, and Play ignores it entirely and reads the
+ * manifest. Verify an artifact you are about to upload with
+ * `aapt2 dump badging <apk>` rather than trusting its name.
+ */
+base {
+    archivesName.set("LockNest-$appVersionName-$appVersionCode")
+}
+
 android {
     namespace = "com.acesoftph.offlinepasswordwallet"
     compileSdk = 36
@@ -36,8 +69,8 @@ android {
         applicationId = "com.acesoftph.offlinepasswordwallet"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.1.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // No cloud/analytics/crash SDKs are integrated. This is an offline-only app.

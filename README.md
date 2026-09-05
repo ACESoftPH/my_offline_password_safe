@@ -21,16 +21,21 @@ restore the optional capacity upgrades.
 ## 1. Building & testing
 
 ```bash
+# Artifacts are named <versionName>-<versionCode>-<buildType> from
+# `base { archivesName }` in app/build.gradle.kts, so a file's name always
+# says which build it is. Play reads the manifest, not the name -- confirm an
+# upload with `aapt2 dump badging <apk>` rather than trusting the filename.
+
 # Debug APK
-./gradlew assembleDebug            # -> app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleDebug     # -> app/build/outputs/apk/debug/LockNest-<ver>-<code>-debug.apk
 
 # Release APK, for sideloading (R8 + resource shrinking, lint-vital)
-./gradlew assembleRelease          # -> app/build/outputs/apk/release/app-release.apk
+./gradlew assembleRelease   # -> app/build/outputs/apk/release/LockNest-<ver>-<code>-release.apk
 
 # Release App Bundle, for Google Play
-./gradlew bundleRelease            # -> app/build/outputs/bundle/release/app-release.aab
+./gradlew bundleRelease     # -> app/build/outputs/bundle/release/LockNest-<ver>-<code>-release.aab
 
-# JVM + Robolectric unit tests (178 tests)
+# JVM + Robolectric unit tests (194 tests)
 ./gradlew testDebugUnitTest
 
 # Android lint
@@ -40,9 +45,12 @@ restore the optional capacity upgrades.
 ./gradlew connectedDebugAndroidTest
 ```
 
-No `INTERNET` (or any network / storage / location) permission is present in the
-merged manifest — only `USE_BIOMETRIC` / `USE_FINGERPRINT` (pulled in by
-`androidx.biometric`, guarded by `uses-feature ... required=false`).
+The merged manifest declares `INTERNET`, `ACCESS_NETWORK_STATE` and
+`com.android.vending.BILLING` — all three from Google Play's billing library
+(§15b) — plus `USE_BIOMETRIC` / `USE_FINGERPRINT` from `androidx.biometric`,
+guarded by `uses-feature ... required=false`. No storage or location permission
+is present. `app/src/main/AndroidManifest.xml` declares none of these itself, so
+always check the **merged** manifest before repeating any permissions claim.
 
 ### Release signing
 
@@ -653,7 +661,7 @@ Defaults (length, specials on/off) are configurable in Settings.
 | App left open | Inactivity auto-lock + lock-on-background; references cleared. |
 | Clipboard scraping | Sensitive-flagged clips + timed auto-clear. |
 | OS backup exfiltration | Backup and device-transfer fully disabled for all domains. |
-| Network exfiltration | No `INTERNET` permission; nothing to exfiltrate over. |
+| Network exfiltration | `INTERNET` is present since 1.1.0 (Play Billing, §15b), so the permission is no longer the control. What holds instead: no app code opens a connection — the vault, crypto, import/export and settings layers touch no socket — and the only component that can is the billing client, reached solely from the Upgrade screen. Nothing from the vault is passed to it. Verifiable by grepping the source for HTTP/socket APIs (see EXPORT-COMPLIANCE.md §2), which is a weaker guarantee than an absent permission and is recorded here as such. |
 | Stolen `.opwbackup` file | AES-256-GCM under a dedicated PBKDF2 (600k) backup passphrase, independent of (and typically stronger than) the security answers; contains no master password / answers / keystore material. |
 | Brute-forcing recovery answers | Persistent, escalating rate limiting; answers never leave the device. |
 | Weak/duplicate KDF outputs | Unique random salt per KEK; unique random IV per encryption (enforced in code). |
